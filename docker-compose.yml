@@ -39,6 +39,7 @@ services:
     volumes:
       - ./backend/logs:/logs
     networks:
+      - app_net
       - honeypot_net
     depends_on:
       - postgres
@@ -65,6 +66,7 @@ services:
     volumes:
       - ./backend/logs:/logs
     networks:
+      - app_net
       - honeypot_net
     depends_on:
       - postgres
@@ -92,6 +94,7 @@ services:
     volumes:
       - ./backend/logs:/logs
     networks:
+      - app_net
       - honeypot_net
     depends_on:
       - postgres
@@ -118,6 +121,7 @@ services:
     volumes:
       - ./backend/logs:/logs
     networks:
+      - app_net
       - honeypot_net
     depends_on:
       - postgres
@@ -133,7 +137,7 @@ services:
       dockerfile: Dockerfile
     container_name: phantomnet_frontend
     ports:
-      - "3000:8080" # Map unprivileged port 8080 to host 3000
+      - "3000:8080"
     networks:
       - app_net
     depends_on:

@@ -14,12 +14,14 @@ COPY requirements.txt .
 # Install python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create a non-root user and set directory permissions
-RUN useradd -m -u 1000 phantom && chown -R phantom:phantom /app
-
+# Create a non-root user
+RUN useradd -m -u 1000 phantom
 
 # Copy application code
 COPY --chown=phantom:phantom . .
+
+# Set directory permissions for the non-root user to allow creating files at runtime
+RUN chown -R phantom:phantom /app
 
 # Expose API port
 EXPOSE 8000
