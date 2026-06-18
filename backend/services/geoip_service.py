@@ -27,6 +27,7 @@ except ImportError:
     redis = None
 from typing import Optional
 from datetime import datetime
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +95,21 @@ class GeoIPService:
         """Load MaxMind database if available and initialize Redis."""
         if redis:
             try:
-                self._redis = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+                self._redis = redis.Redis(
+                    host='localhost',
+                    port=6379,
+                    db=0,
+                    decode_responses=True,
+                    socket_connect_timeout=1.0,
+                    socket_timeout=1.0,
+                )
                 self._redis.ping()
                 logger.info("[GeoIP] Connected to Redis for caching.")
             except Exception as e:
-                logger.warning(f"[GeoIP] Redis unavailable: {e}")
+                logger.info(f"[GeoIP] Redis unavailable: {e}. Using in-memory cache.")
                 self._redis = None
+        else:
+            logger.info("[GeoIP] Redis module not found. Using in-memory cache.")
         try:
             import geoip2.database
 
@@ -140,7 +150,11 @@ class GeoIPService:
                 pass
         
         if ip in self._cache:
-            return self._cache[ip]
+            entry = self._cache[ip]
+            if time.time() < entry['exp']:
+                return entry['data']
+            else:
+                del self._cache[ip]
 
         # 3. Try MaxMind (offline, fast)
         if self._maxmind_available:
@@ -158,10 +172,12 @@ class GeoIPService:
         if self._redis:
             try:
                 self._redis.setex(f"geoip:{ip}", 3600, json.dumps(result))
+                return
             except Exception:
-                self._cache[ip] = result
-        else:
-            self._cache[ip] = result
+                pass
+        
+        # Local cache fallback (1 hour TTL)
+        self._cache[ip] = {'data': result, 'exp': time.time() + 3600}
 
     def _is_private_ip(self, ip: str) -> bool:
         """Check if IP is private, loopback, or reserved."""

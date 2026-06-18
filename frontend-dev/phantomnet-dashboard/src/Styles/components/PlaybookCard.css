@@ -1,0 +1,350 @@
+/* ==========================================
+   PLAYBOOK CARD - Sentinel Cyber HUD Design
+   ========================================== */
+
+.playbook-card {
+    position: relative;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 1.25rem;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+body[data-theme="light"] .playbook-card {
+    background: rgba(255, 255, 255, 0.85);
+    border-color: rgba(139, 92, 246, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+.playbook-card:hover {
+    transform: translateY(-6px);
+    border-color: rgba(139, 92, 246, 0.3);
+    background: rgba(15, 23, 42, 0.6);
+    box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.4),
+                0 0 20px rgba(139, 92, 246, 0.08);
+}
+
+body[data-theme="light"] .playbook-card:hover {
+    background: #ffffff;
+    box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1);
+}
+
+/* ─── HUD Corners ─── */
+.playbook-card .hud-corner {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-color: #8b5cf6;
+    border-width: 2px;
+    opacity: 0.4;
+    transition: all 0.3s ease;
+}
+
+.playbook-card .hud-corner.top-left {
+    top: 10px;
+    left: 10px;
+    border-top-style: solid;
+    border-left-style: solid;
+}
+
+.playbook-card .hud-corner.bottom-right {
+    bottom: 10px;
+    right: 10px;
+    border-bottom-style: solid;
+    border-right-style: solid;
+}
+
+.playbook-card:hover .hud-corner {
+    opacity: 1;
+    width: 14px;
+    height: 14px;
+}
+
+/* ─── Card Header ─── */
+.playbook-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.playbook-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.playbook-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    margin: 0;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+body[data-theme="light"] .playbook-title {
+    color: #1e293b;
+}
+
+.playbook-technique {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    color: #8b5cf6;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    width: fit-content;
+}
+
+.playbook-technique .technique-icon {
+    font-size: 0.6rem;
+    opacity: 0.8;
+}
+
+/* ─── Severity Badge ─── */
+.severity-badge {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    white-space: nowrap;
+}
+
+.severity-badge .severity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+/* Severity Variants */
+.severity-critical {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.severity-critical .severity-dot {
+    background: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+    animation: severityPulse 1.5s infinite;
+}
+
+.severity-high {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.2);
+}
+.severity-high .severity-dot {
+    background: #f59e0b;
+    box-shadow: 0 0 8px #f59e0b;
+}
+
+.severity-medium {
+    background: rgba(59, 130, 246, 0.12);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+.severity-medium .severity-dot {
+    background: #3b82f6;
+    box-shadow: 0 0 6px #3b82f6;
+}
+
+.severity-low {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+.severity-low .severity-dot {
+    background: #22c55e;
+}
+
+@keyframes severityPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+}
+
+/* ─── Divider ─── */
+.playbook-divider {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(139, 92, 246, 0.15),
+        rgba(139, 92, 246, 0.25),
+        rgba(139, 92, 246, 0.15),
+        transparent
+    );
+    margin: 0;
+}
+
+/* ─── Card Body ─── */
+.playbook-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+/* ─── Status Row ─── */
+.playbook-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.playbook-status-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.playbook-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.playbook-status-badge .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+/* Status Variants */
+.status-approved {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+.status-approved .status-dot {
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+    animation: statusGlow 2s infinite;
+}
+
+.status-draft {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+    border: 1px solid rgba(148, 163, 184, 0.15);
+}
+.status-draft .status-dot {
+    background: #94a3b8;
+}
+
+.status-rejected {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+.status-rejected .status-dot {
+    background: #ef4444;
+}
+
+@keyframes statusGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    50% { box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+}
+
+/* ─── Meta Row ─── */
+.playbook-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.playbook-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: #64748b;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.playbook-meta-item .meta-icon {
+    font-size: 0.65rem;
+    color: #475569;
+}
+
+.playbook-meta-item .meta-value {
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+body[data-theme="light"] .playbook-meta-item {
+    color: #94a3b8;
+}
+body[data-theme="light"] .playbook-meta-item .meta-value {
+    color: #475569;
+}
+
+/* ─── Glow Effect ─── */
+.playbook-card-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(139, 92, 246, 0.04) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+.playbook-card:hover .playbook-card-glow {
+    opacity: 1;
+}
+
+/* ─── Scan Line ─── */
+.playbook-scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.playbook-card:hover .playbook-scan-line {
+    opacity: 0.3;
+    animation: playbookScan 3s linear infinite;
+}
+
+@keyframes playbookScan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(200px); }
+}
