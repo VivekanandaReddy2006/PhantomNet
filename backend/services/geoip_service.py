@@ -20,23 +20,48 @@ Usage:
 
 import os
 import logging
+import json
+try:
+    import redis
+except ImportError:
+    redis = None
 from typing import Optional
 from datetime import datetime
+import time
 
 logger = logging.getLogger(__name__)
 
 # Path to MaxMind database file
 GEOIP_DB_PATH = os.getenv(
     "GEOIP_DB_PATH",
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "GeoLite2-City.mmdb")
+    os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "data", "GeoLite2-City.mmdb"
+    ),
 )
 
 # Private/reserved IP prefixes
 PRIVATE_PREFIXES = (
-    "10.", "172.16.", "172.17.", "172.18.", "172.19.",
-    "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
-    "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
-    "172.30.", "172.31.", "192.168.", "127.", "0.", "169.254.",
+    "10.",
+    "172.16.",
+    "172.17.",
+    "172.18.",
+    "172.19.",
+    "172.20.",
+    "172.21.",
+    "172.22.",
+    "172.23.",
+    "172.24.",
+    "172.25.",
+    "172.26.",
+    "172.27.",
+    "172.28.",
+    "172.29.",
+    "172.30.",
+    "172.31.",
+    "192.168.",
+    "127.",
+    "0.",
+    "169.254.",
 )
 
 LOOPBACK_IPS = {"127.0.0.1", "::1", "localhost", "phantomnet_postgres"}
@@ -55,6 +80,7 @@ class GeoIPService:
 
     _instance = None
     _cache = {}
+    _redis = None
     _reader = None
     _maxmind_available = False
 
@@ -66,9 +92,27 @@ class GeoIPService:
         return cls._instance
 
     def _initialize(self):
-        """Load MaxMind database if available."""
+        """Load MaxMind database if available and initialize Redis."""
+        if redis:
+            try:
+                self._redis = redis.Redis(
+                    host='localhost',
+                    port=6379,
+                    db=0,
+                    decode_responses=True,
+                    socket_connect_timeout=1.0,
+                    socket_timeout=1.0,
+                )
+                self._redis.ping()
+                logger.info("[GeoIP] Connected to Redis for caching.")
+            except Exception as e:
+                logger.info(f"[GeoIP] Redis unavailable: {e}. Using in-memory cache.")
+                self._redis = None
+        else:
+            logger.info("[GeoIP] Redis module not found. Using in-memory cache.")
         try:
             import geoip2.database
+
             if os.path.exists(GEOIP_DB_PATH):
                 self._reader = geoip2.database.Reader(GEOIP_DB_PATH)
                 self._maxmind_available = True
@@ -79,7 +123,9 @@ class GeoIPService:
                     f"Falling back to ip-api.com"
                 )
         except ImportError:
-            logger.warning("[GeoIP] geoip2 package not installed. Using ip-api.com fallback")
+            logger.warning(
+                "[GeoIP] geoip2 package not installed. Using ip-api.com fallback"
+            )
         except Exception as e:
             logger.error(f"[GeoIP] Failed to load MaxMind database: {e}")
 
@@ -95,20 +141,43 @@ class GeoIPService:
             return self._private_result(ip)
 
         # 2. Check cache
+        if self._redis:
+            try:
+                cached = self._redis.get(f"geoip:{ip}")
+                if cached:
+                    return json.loads(cached)
+            except Exception:
+                pass
+        
         if ip in self._cache:
-            return self._cache[ip]
+            entry = self._cache[ip]
+            if time.time() < entry['exp']:
+                return entry['data']
+            else:
+                del self._cache[ip]
 
         # 3. Try MaxMind (offline, fast)
         if self._maxmind_available:
             result = self._lookup_maxmind(ip)
             if result:
-                self._cache[ip] = result
+                self._cache_result(ip, result)
                 return result
 
         # 4. Fallback to ip-api.com (online, slow)
         result = self._lookup_ipapi(ip)
-        self._cache[ip] = result
+        self._cache_result(ip, result)
         return result
+
+    def _cache_result(self, ip: str, result: dict):
+        if self._redis:
+            try:
+                self._redis.setex(f"geoip:{ip}", 3600, json.dumps(result))
+                return
+            except Exception:
+                pass
+        
+        # Local cache fallback (1 hour TTL)
+        self._cache[ip] = {'data': result, 'exp': time.time() + 3600}
 
     def _is_private_ip(self, ip: str) -> bool:
         """Check if IP is private, loopback, or reserved."""
@@ -164,10 +233,10 @@ class GeoIPService:
         """Fallback: look up IP using ip-api.com REST API."""
         try:
             import requests
+
             fields = "status,message,country,countryCode,city,lat,lon"
             response = requests.get(
-                f"http://ip-api.com/json/{ip}?fields={fields}",
-                timeout=3
+                f"http://ip-api.com/json/{ip}?fields={fields}", timeout=3
             )
             if response.status_code == 200:
                 data = response.json()

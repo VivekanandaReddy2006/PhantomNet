@@ -13,19 +13,18 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@xyflow/react": "^12.10.1",
     "axios": "^1.13.2",
-    "build": "^0.1.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "html-to-image": "^1.11.13",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.575.0",
+    "prop-types": "^15.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.10.1",
     "recharts": "^3.7.0",
-    "run": "^1.5.0",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
@@ -40,9 +39,12 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jspdf": "^4.2.0",
+    "jspdf-autotable": "^5.0.7",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
-    "vite": "npm:rolldown-vite@7.2.5"
+    "vite": "npm:rolldown-vite@7.2.5",
+    "xlsx": "^0.18.5"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"

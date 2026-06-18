@@ -3,6 +3,7 @@ import joblib
 import os
 import time
 from sklearn.ensemble import IsolationForest
+
 # Fix import for project root execution
 try:
     from backend.ml.feature_extractor import FeatureExtractor
@@ -10,7 +11,13 @@ except ImportError:
     from ml.feature_extractor import FeatureExtractor
 
 # Path to save the trained model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "model.pkl")
+MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml_models", "registry", "anomaly_detector.pkl"))
+
+# Fix import for project root execution
+try:
+    from backend.ml.mitigation_engine import MitigationEngine
+except ImportError:
+    from ml.mitigation_engine import MitigationEngine
 
 
 class AnomalyDetector:
@@ -18,11 +25,10 @@ class AnomalyDetector:
         # The Brain: Isolation Forest
         # contamination=0.1 means we expect ~10% of traffic to be attacks
         self.model = IsolationForest(
-            n_estimators=100,
-            contamination=0.1,
-            random_state=42
+            n_estimators=100, contamination=0.1, random_state=42
         )
         self.extractor = FeatureExtractor()
+        self.mitigator = MitigationEngine()
         self.is_trained = False
 
     def train(self, logs):
@@ -64,10 +70,7 @@ class AnomalyDetector:
 
         # Extract features
         feature_dict = self.extractor.extract_features(log_entry)
-        vector = np.array(
-            list(feature_dict.values()),
-            dtype=float
-        ).reshape(1, -1)
+        vector = np.array(list(feature_dict.values()), dtype=float).reshape(1, -1)
 
         # -------- LATENCY MEASUREMENT (ML INFERENCE ONLY) --------
         start_time = time.perf_counter()
@@ -81,7 +84,10 @@ class AnomalyDetector:
         print(f"[LATENCY] ML inference time: {latency_ms:.2f} ms")
         # --------------------------------------------------------
 
-        return pred, score
+        # NEW: Refine prediction using Mitigation Engine
+        refined_pred, _ = self.mitigator.refine_prediction(log_entry, pred, score)
+
+        return refined_pred, score
 
     def load(self):
         """Loads a saved model from disk."""

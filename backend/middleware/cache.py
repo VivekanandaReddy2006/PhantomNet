@@ -38,7 +38,7 @@ class TTLCache:
     """
 
     def __init__(self, default_ttl: int = 30, max_size: int = 500):
-        self._store = {}       # key → {"data": ..., "expires_at": float}
+        self._store = {}  # key → {"data": ..., "expires_at": float}
         self._default_ttl = default_ttl
         self._max_size = max_size
         self._hits = 0
@@ -67,7 +67,9 @@ class TTLCache:
             self._evict_expired()
             if len(self._store) >= self._max_size:
                 # Remove oldest entry
-                oldest_key = min(self._store, key=lambda k: self._store[k]["expires_at"])
+                oldest_key = min(
+                    self._store, key=lambda k: self._store[k]["expires_at"]
+                )
                 del self._store[oldest_key]
 
         ttl = ttl or self._default_ttl
@@ -85,7 +87,9 @@ class TTLCache:
         for key in keys_to_remove:
             del self._store[key]
         if keys_to_remove:
-            logger.info(f"[CACHE] Invalidated {len(keys_to_remove)} entries matching '{pattern}'")
+            logger.info(
+                f"[CACHE] Invalidated {len(keys_to_remove)} entries matching '{pattern}'"
+            )
 
     def clear(self):
         """Clear all cached entries."""
@@ -125,7 +129,7 @@ api_cache = TTLCache(default_ttl=30, max_size=500)
 def _make_cache_key(path: str, query_params: dict) -> str:
     """Generate a unique cache key from request path and query params."""
     params_str = json.dumps(sorted(query_params.items()), default=str)
-    param_hash = hashlib.md5(params_str.encode()).hexdigest()[:8]
+    param_hash = hashlib.sha256(params_str.encode()).hexdigest()[:16]
     return f"{path}:{param_hash}"
 
 
@@ -142,6 +146,7 @@ def cache_response(ttl_seconds: int = 30):
         def get_stats(...):
             ...
     """
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -165,6 +170,7 @@ def cache_response(ttl_seconds: int = 30):
             return result
 
         return wrapper
+
     return decorator
 
 

@@ -15,22 +15,37 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 LOG_FILE = os.path.join(LOG_DIR, "phantomnet.log")
 
-MAX_LOG_SIZE = 5 * 1024 * 1024   # 5 MB
+MAX_LOG_SIZE = 5 * 1024 * 1024  # 5 MB
 BACKUP_COUNT = 5
 
 # ==================================================
 # JSON FORMATTER
 # ==================================================
+import hmac
+import hashlib
+
+# Get secret for log signing from env
+LOG_SIGNING_KEY = os.getenv("LOG_SIGNING_KEY", "default_insecure_key").encode()
+
+
 class JSONFormatter(logging.Formatter):
     def format(self, record):
-        return json.dumps({
+        log_data = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "honeypot_type": getattr(record, "honeypot_type", "unknown"),
             "source_ip": getattr(record, "source_ip", None),
             "event": getattr(record, "event", record.getMessage()),
             "data": getattr(record, "data", None),
-        })
+        }
+
+        # Generate HMAC signature for integrity
+        message = f"{log_data['timestamp']}|{log_data['level']}|{log_data['event']}|{json.dumps(log_data['data'])}".encode()
+        signature = hmac.new(LOG_SIGNING_KEY, message, hashlib.sha256).hexdigest()
+        log_data["signature"] = signature
+
+        return json.dumps(log_data)
+
 
 # ==================================================
 # ASYNC LOGGING QUEUE
@@ -41,10 +56,7 @@ log_queue = Queue(-1)
 # FILE HANDLER (ROTATION)
 # ==================================================
 file_handler = RotatingFileHandler(
-    LOG_FILE,
-    maxBytes=MAX_LOG_SIZE,
-    backupCount=BACKUP_COUNT,
-    encoding="utf-8"
+    LOG_FILE, maxBytes=MAX_LOG_SIZE, backupCount=BACKUP_COUNT, encoding="utf-8"
 )
 file_handler.setFormatter(JSONFormatter())
 
@@ -64,6 +76,7 @@ logger.propagate = False
 listener = QueueListener(log_queue, file_handler)
 listener.start()
 
+
 # ==================================================
 # SAFE SHUTDOWN (CRITICAL FIX)
 # ==================================================
@@ -78,15 +91,12 @@ def shutdown_logger():
     except Exception:
         pass
 
+
 # ==================================================
 # PUBLIC LOGGING FUNCTION (USE EVERYWHERE)
 # ==================================================
 def log_event(
-    honeypot_type: str,
-    event: str,
-    level: str,
-    source_ip: str = None,
-    data: dict = None
+    honeypot_type: str, event: str, level: str, source_ip: str = None, data: dict = None
 ):
     extra = {
         "honeypot_type": honeypot_type,

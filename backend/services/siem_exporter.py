@@ -62,6 +62,7 @@ SEVERITY_MAP = {
 # Format Transformers
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _packet_log_to_json(log: PacketLog) -> Dict[str, Any]:
     """
     Transform a PacketLog ORM row into a SIEM-compatible JSON dict.
@@ -163,16 +164,15 @@ def _alert_to_cef(alert: Alert) -> str:
 # HTTP Shipping with Retry
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 def _ship_to_logstash(
     payload: List[Any],
     output_format: str = "json",
     url: str = LOGSTASH_URL,
 ) -> bool:
     """
-    POST a batch of events to Logstash HTTP input.
-    Retries with exponential backoff on failure.
-
-    Returns True if the batch was delivered, False otherwise.
+    (Deprecated) Left here just in case, but new SIEM export is handled via
+    Universal SIEM Exporter in backend/services/universal_siem_exporter.py
     """
     if not payload:
         return True
@@ -203,8 +203,7 @@ def _ship_to_logstash(
 
         except requests.exceptions.ConnectionError:
             logger.warning(
-                f"⚠️ Connection refused to {url} "
-                f"(attempt {attempt}/{MAX_RETRIES})"
+                f"⚠️ Connection refused to {url} " f"(attempt {attempt}/{MAX_RETRIES})"
             )
         except requests.exceptions.Timeout:
             logger.warning(
@@ -233,6 +232,7 @@ def _ship_to_logstash(
 # SIEM Exporter Service
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 class SIEMExporterService:
     """
     Background service that periodically exports PhantomNet security events
@@ -248,13 +248,15 @@ class SIEMExporterService:
         self,
         interval: int = EXPORT_INTERVAL_SECONDS,
         batch_size: int = BATCH_SIZE,
-        output_format: str = OUTPUT_FORMAT,
-        logstash_url: str = LOGSTASH_URL,
     ):
         self.interval = interval
         self.batch_size = batch_size
-        self.output_format = output_format
-        self.logstash_url = logstash_url
+
+        from services.universal_siem_exporter import get_siem_exporter
+
+        self.exporter = get_siem_exporter()
+        self.logstash_url = "universal_siem"
+        self.output_format = os.getenv("SIEM_TYPE", "elk")
 
         # Watermarks — track last exported IDs to avoid duplicates
         self._last_packet_id: int = 0
@@ -299,8 +301,7 @@ class SIEMExporterService:
             )
         except ImportError:
             logger.error(
-                "❌ APScheduler not installed. "
-                "Install with: pip install apscheduler"
+                "❌ APScheduler not installed. " "Install with: pip install apscheduler"
             )
         except Exception as e:
             logger.error(f"❌ Failed to start SIEM Exporter: {e}")
@@ -327,9 +328,7 @@ class SIEMExporterService:
             "total_exported": self.total_exported,
             "total_failed": self.total_failed,
             "last_export_time": (
-                self.last_export_time.isoformat()
-                if self.last_export_time
-                else None
+                self.last_export_time.isoformat() if self.last_export_time else None
             ),
             "last_packet_id": self._last_packet_id,
             "last_alert_id": self._last_alert_id,
@@ -383,14 +382,8 @@ class SIEMExporterService:
             if not logs:
                 break
 
-            # Transform
-            if self.output_format == "cef":
-                batch = [_packet_log_to_cef(log) for log in logs]
-            else:
-                batch = [_packet_log_to_json(log) for log in logs]
-
-            # Ship
-            if _ship_to_logstash(batch, self.output_format, self.logstash_url):
+            # Ship using the abstract SIEM exporter
+            if self.exporter.export_events(logs, "packet_log"):
                 self._last_packet_id = logs[-1].id
                 total += len(logs)
             else:
@@ -413,14 +406,8 @@ class SIEMExporterService:
             if not alerts:
                 break
 
-            # Transform
-            if self.output_format == "cef":
-                batch = [_alert_to_cef(a) for a in alerts]
-            else:
-                batch = [_alert_to_json(a) for a in alerts]
-
-            # Ship
-            if _ship_to_logstash(batch, self.output_format, self.logstash_url):
+            # Ship using abstract exporter
+            if self.exporter.export_events(alerts, "alert"):
                 self._last_alert_id = alerts[-1].id
                 total += len(alerts)
             else:

@@ -12,6 +12,12 @@ import AnomalyDashboard from "./pages/AnomalyDashboard";
 import Topology from "./pages/Topology";
 import GeoDashboard from "./pages/GeoDashboard";
 import AdvancedAnalytics from "./pages/AdvancedAnalytics";
+import ThreatHunting from "./pages/ThreatHunting";
+import AdvancedDashboard from "./pages/AdvancedDashboard";
+import PacketAnalysis from "./components/PacketAnalysis";
+import AdminPanel from "./pages/AdminPanel";
+import MLInsights from "./pages/MLInsights";
+import Honeypots from "./pages/Honeypots";
 
 
 function App() {
@@ -33,6 +39,12 @@ function App() {
               <Route path="/topology" element={<Topology />} />
               <Route path="/geo-stats" element={<GeoDashboard />} />
               <Route path="/analytics" element={<AdvancedAnalytics />} />
+              <Route path="/hunting" element={<ThreatHunting />} />
+              <Route path="/advanced-dashboard" element={<AdvancedDashboard />} />
+              <Route path="/packet-analysis" element={<PacketAnalysis />} />
+              <Route path="/admin" element={<AdminPanel />} />
+              <Route path="/ml-insights" element={<MLInsights />} />
+              <Route path="/honeypots" element={<Honeypots />} />
             </Routes>
           </div>
         </BrowserRouter>

@@ -12,24 +12,19 @@
     6. Artifacts      – detection rule references, log sources, evidence paths
     7. Appendix       – context metadata, rollback notes, escalation contacts
 
+  Jinja2 template inheritance support:
+    Exposes named {% block %} regions so child templates can override
+    individual sections without rewriting the whole document.
+
   Required context variables
   --------------------------
-  title          (str)  – Playbook title, e.g. "Brute Force Response"
+  title          (str)  – Playbook title
   severity       (str)  – CRITICAL | HIGH | MEDIUM | LOW
   attack_pattern (str)  – Normalised attack pattern key
-  generated_at   (str)  – ISO-8601 timestamp of generation (injected by generator)
-
-  Optional / defaulted variables are documented inline with | default(...).
-
-  Jinja2 features used
-  ---------------------
-  - {% if %} / {% elif %} / {% else %} / {% endif %}  – conditional blocks
-  - {% for %} / {% endfor %}                           – list iteration
-  - {{ var | default('…') }}                           – safe defaults
-  - {{ var | upper }}                                  – text filter
-  - {# comment #}                                      – template comments
+  generated_at   (str)  – ISO-8601 timestamp of generation
 #}
 
+{% block header %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 1 · HEADER
    ────────────────────────────────────────────────────────────────────────── #}
@@ -50,7 +45,9 @@
 | **Status**       | `{{ status | default("ACTIVE") }}` |
 
 ---
+{% endblock header %}
 
+{% block summary %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 2 · SUMMARY
    ────────────────────────────────────────────────────────────────────────── #}
@@ -90,7 +87,9 @@
 | **Blast Radius**           | {{ blast_radius | default("Localised to honeypot segment") }} |
 
 ---
+{% endblock summary %}
 
+{% block ioc_table %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 3 · IOC TABLE
    ────────────────────────────────────────────────────────────────────────── #}
@@ -133,7 +132,9 @@
 {% endif %}
 
 ---
+{% endblock ioc_table %}
 
+{% block attack_mapping %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 4 · MITRE ATT&CK MAPPING
    ────────────────────────────────────────────────────────────────────────── #}
@@ -168,7 +169,6 @@
 | [T1595](https://attack.mitre.org/techniques/T1595/) | **Active Scanning** | Reconnaissance | T1595.002 – Vulnerability Scanning | Coordinated scan to find exploitable services across the network. |
 
 {% else %}
-{# Generic fallback ATT&CK mapping when pattern is unknown #}
 | Technique ID | Technique Name | Tactic | Sub-technique | Description |
 |---|---|---|---|---|
 {% if attack_techniques is defined and attack_techniques %}
@@ -183,7 +183,9 @@
 > 📖 Reference: [MITRE ATT&CK Enterprise Matrix](https://attack.mitre.org/matrices/enterprise/)
 
 ---
+{% endblock attack_mapping %}
 
+{% block containment %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 5 · CONTAINMENT STEPS
    ────────────────────────────────────────────────────────────────────────── #}
@@ -280,7 +282,6 @@
 - [ ] **Schedule tabletop exercise** – Plan distributed-attack tabletop with IR team within 2 weeks.
 
 {% else %}
-{# Generic containment steps for unknown patterns #}
 ### Phase 1 – Immediate Response (T+0 to T+10 min)
 
 {% if containment_steps is defined and containment_steps %}
@@ -292,23 +293,15 @@
 - [ ] **Preserve evidence** – Capture logs, memory dumps, and network traffic before any remediation.
 - [ ] **Alert security team** – Notify SOC of the `{{ severity | default("HIGH") }}` severity incident.
 - [ ] **Begin investigation** – Assign incident commander and open investigation ticket.
-{% endif %}
-
-### Phase 2 – Investigation
-
 - [ ] **Collect IOCs** – Gather all IPs, domains, file hashes, and behavioural indicators.
-- [ ] **Map to ATT&CK** – Identify MITRE techniques used and update the mapping in this playbook.
-- [ ] **Assess blast radius** – Determine how many systems / users are affected.
-
-### Phase 3 – Recovery
-
 - [ ] **Patch or remove vulnerability** – Address the root cause of the incident.
-- [ ] **Restore from clean backup** – If necessary, restore affected systems from verified clean backup.
-- [ ] **Lessons learned** – Document findings and update detection rules.
+{% endif %}
 {% endif %}
 
 ---
+{% endblock containment %}
 
+{% block artifacts %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 6 · ARTIFACTS
    ────────────────────────────────────────────────────────────────────────── #}
@@ -373,7 +366,9 @@ index={{ siem_index | default("siem-alerts-*") }} attack_pattern="{{ attack_patt
 ```
 
 ---
+{% endblock artifacts %}
 
+{% block appendix %}
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 7 · APPENDIX
    ────────────────────────────────────────────────────────────────────────── #}
@@ -397,8 +392,7 @@ index={{ siem_index | default("siem-alerts-*") }} attack_pattern="{{ attack_patt
 {% else %}
 1. **Unblock IP** – Remove the block rule for `{{ source_ip | default("<source_ip>") }}` if determined to be a false positive.
 2. **Reconnect host** – Re-attach `{{ target_ip | default("<target_ip>") }}` to the network after forensic clearance.
-3. **Remove honeypots** – Decommission any dynamically deployed honeypots after the incident closes.
-4. **Restore security level** – Revert global security posture to `NORMAL` after threat has been neutralised.
+3. **Restore security level** – Revert global security posture to `NORMAL` after threat has been neutralised.
 {% endif %}
 
 ### SLA Targets
@@ -427,3 +421,4 @@ classification: "{{ classification | default("TLP:AMBER") }}"
 ---
 
 *This playbook was auto-generated by **PhantomNet Sentinel** · [https://github.com/sriram21-09/PhantomNet](https://github.com/sriram21-09/PhantomNet)*
+{% endblock appendix %}

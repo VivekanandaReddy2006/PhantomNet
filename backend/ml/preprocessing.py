@@ -3,16 +3,18 @@ import pandas as pd
 import joblib
 import os
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from backend.ml.feature_extractor import FeatureExtractor
+from ml.feature_extractor import FeatureExtractor
 
-MODEL_DIR = "backend/ml/"
+# Path to the model registry (project root)
+REGISTRY_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml_models", "registry"))
+
 
 class DataPreprocessor:
     def __init__(self):
         self.extractor = FeatureExtractor()
         self.scaler = StandardScaler()
         self.is_fitted = False
-        
+
     def process_and_label(self, raw_logs, labels=None):
         """
         Converts raw logs -> Feature Vectors -> Scaled Matrix.
@@ -22,7 +24,7 @@ class DataPreprocessor:
         # 1. Extract Features (Raw Vectors)
         vectors = []
         valid_labels = []
-        
+
         for i, log in enumerate(raw_logs):
             try:
                 vec = self.extractor.extract_features(log)
@@ -50,14 +52,16 @@ class DataPreprocessor:
             return X_scaled
 
     def save_scaler(self):
-        joblib.dump(self.scaler, os.path.join(MODEL_DIR, "scaler.pkl"))
+        # Use absolute path relative to project root registry
+        scaler_path = os.path.join(REGISTRY_DIR, "scaler.pkl")
+        joblib.dump(self.scaler, scaler_path)
         self.is_fitted = True
 
     def load_scaler(self):
-        path = os.path.join(MODEL_DIR, "scaler.pkl")
+        path = os.path.join(REGISTRY_DIR, "scaler.pkl")
         if os.path.exists(path):
             self.scaler = joblib.load(path)
             self.is_fitted = True
         else:
-            print("⚠️ Warning: No scaler found. Using raw data (suboptimal).")
+            print(f"⚠️ Warning: No scaler found at {path}. Using raw data (suboptimal).")
             self.is_fitted = False
