@@ -35,6 +35,7 @@ const Navbar = () => {
         { path: "/events", label: "Events", icon: FaListAlt },
         { path: "/packet-analysis", label: "PCAP Analysis", icon: FaDatabase },
         { path: "/honeypots", label: "Honeypots", icon: FaNetworkWired },
+        { path: "/sentinel", label: "Sentinel", icon: FaShieldAlt },
       ]
     },
     {

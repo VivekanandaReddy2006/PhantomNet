@@ -1,0 +1,240 @@
+/* ==========================================
+   MITRE ATT&CK Tag – Sentinel HUD Badge
+   ========================================== */
+
+.mitre-tag {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 0.25rem 0.65rem;
+    border-radius: 6px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.mitre-tag:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.15);
+}
+
+.mitre-tag:active {
+    transform: translateY(0);
+}
+
+/* ─── Tag Icon ─── */
+.mitre-tag .mitre-tag-icon {
+    font-size: 0.6rem;
+    opacity: 0.85;
+}
+
+/* ─── Tactic Dot ─── */
+.mitre-tag .tactic-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* ─── Tactic Color Variants ─── */
+
+/* Credential Access – Red */
+.mitre-tag.tactic-credential-access {
+    background: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+.mitre-tag.tactic-credential-access .tactic-dot { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+.mitre-tag.tactic-credential-access:hover { background: rgba(239, 68, 68, 0.18); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+
+/* Initial Access – Orange */
+.mitre-tag.tactic-initial-access {
+    background: rgba(249, 115, 22, 0.1);
+    color: #fb923c;
+    border-color: rgba(249, 115, 22, 0.2);
+}
+.mitre-tag.tactic-initial-access .tactic-dot { background: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.5); }
+.mitre-tag.tactic-initial-access:hover { background: rgba(249, 115, 22, 0.18); box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15); }
+
+/* Execution – Amber */
+.mitre-tag.tactic-execution {
+    background: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.2);
+}
+.mitre-tag.tactic-execution .tactic-dot { background: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.5); }
+.mitre-tag.tactic-execution:hover { background: rgba(245, 158, 11, 0.18); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15); }
+
+/* Persistence – Yellow-Green */
+.mitre-tag.tactic-persistence {
+    background: rgba(132, 204, 22, 0.1);
+    color: #a3e635;
+    border-color: rgba(132, 204, 22, 0.2);
+}
+.mitre-tag.tactic-persistence .tactic-dot { background: #84cc16; box-shadow: 0 0 6px rgba(132, 204, 22, 0.5); }
+.mitre-tag.tactic-persistence:hover { background: rgba(132, 204, 22, 0.18); box-shadow: 0 4px 12px rgba(132, 204, 22, 0.15); }
+
+/* Discovery – Blue */
+.mitre-tag.tactic-discovery {
+    background: rgba(59, 130, 246, 0.1);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.2);
+}
+.mitre-tag.tactic-discovery .tactic-dot { background: #3b82f6; box-shadow: 0 0 6px rgba(59, 130, 246, 0.5); }
+.mitre-tag.tactic-discovery:hover { background: rgba(59, 130, 246, 0.18); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); }
+
+/* Lateral Movement – Cyan */
+.mitre-tag.tactic-lateral-movement {
+    background: rgba(6, 182, 212, 0.1);
+    color: #22d3ee;
+    border-color: rgba(6, 182, 212, 0.2);
+}
+.mitre-tag.tactic-lateral-movement .tactic-dot { background: #06b6d4; box-shadow: 0 0 6px rgba(6, 182, 212, 0.5); }
+.mitre-tag.tactic-lateral-movement:hover { background: rgba(6, 182, 212, 0.18); box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15); }
+
+/* Command and Control – Purple */
+.mitre-tag.tactic-command-and-control {
+    background: rgba(139, 92, 246, 0.1);
+    color: #a78bfa;
+    border-color: rgba(139, 92, 246, 0.2);
+}
+.mitre-tag.tactic-command-and-control .tactic-dot { background: #8b5cf6; box-shadow: 0 0 6px rgba(139, 92, 246, 0.5); }
+.mitre-tag.tactic-command-and-control:hover { background: rgba(139, 92, 246, 0.18); box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15); }
+
+/* Exfiltration – Magenta */
+.mitre-tag.tactic-exfiltration {
+    background: rgba(236, 72, 153, 0.1);
+    color: #f472b6;
+    border-color: rgba(236, 72, 153, 0.2);
+}
+.mitre-tag.tactic-exfiltration .tactic-dot { background: #ec4899; box-shadow: 0 0 6px rgba(236, 72, 153, 0.5); }
+.mitre-tag.tactic-exfiltration:hover { background: rgba(236, 72, 153, 0.18); box-shadow: 0 4px 12px rgba(236, 72, 153, 0.15); }
+
+/* Defense Evasion – Slate/Teal */
+.mitre-tag.tactic-defense-evasion {
+    background: rgba(20, 184, 166, 0.1);
+    color: #2dd4bf;
+    border-color: rgba(20, 184, 166, 0.2);
+}
+.mitre-tag.tactic-defense-evasion .tactic-dot { background: #14b8a6; box-shadow: 0 0 6px rgba(20, 184, 166, 0.5); }
+.mitre-tag.tactic-defense-evasion:hover { background: rgba(20, 184, 166, 0.18); box-shadow: 0 4px 12px rgba(20, 184, 166, 0.15); }
+
+/* Privilege Escalation – Rose */
+.mitre-tag.tactic-privilege-escalation {
+    background: rgba(244, 63, 94, 0.1);
+    color: #fb7185;
+    border-color: rgba(244, 63, 94, 0.2);
+}
+.mitre-tag.tactic-privilege-escalation .tactic-dot { background: #f43f5e; box-shadow: 0 0 6px rgba(244, 63, 94, 0.5); }
+.mitre-tag.tactic-privilege-escalation:hover { background: rgba(244, 63, 94, 0.18); box-shadow: 0 4px 12px rgba(244, 63, 94, 0.15); }
+
+/* Impact – Deep Red */
+.mitre-tag.tactic-impact {
+    background: rgba(185, 28, 28, 0.12);
+    color: #fca5a5;
+    border-color: rgba(185, 28, 28, 0.25);
+}
+.mitre-tag.tactic-impact .tactic-dot { background: #dc2626; box-shadow: 0 0 6px rgba(220, 38, 38, 0.5); }
+.mitre-tag.tactic-impact:hover { background: rgba(185, 28, 28, 0.2); box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); }
+
+/* Collection – Indigo */
+.mitre-tag.tactic-collection {
+    background: rgba(99, 102, 241, 0.1);
+    color: #818cf8;
+    border-color: rgba(99, 102, 241, 0.2);
+}
+.mitre-tag.tactic-collection .tactic-dot { background: #6366f1; box-shadow: 0 0 6px rgba(99, 102, 241, 0.5); }
+.mitre-tag.tactic-collection:hover { background: rgba(99, 102, 241, 0.18); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15); }
+
+/* Resource Development – Warm Gray */
+.mitre-tag.tactic-resource-development {
+    background: rgba(168, 162, 158, 0.1);
+    color: #d6d3d1;
+    border-color: rgba(168, 162, 158, 0.2);
+}
+.mitre-tag.tactic-resource-development .tactic-dot { background: #a8a29e; box-shadow: 0 0 6px rgba(168, 162, 158, 0.4); }
+.mitre-tag.tactic-resource-development:hover { background: rgba(168, 162, 158, 0.18); box-shadow: 0 4px 12px rgba(168, 162, 158, 0.12); }
+
+/* Reconnaissance – Sky */
+.mitre-tag.tactic-reconnaissance {
+    background: rgba(14, 165, 233, 0.1);
+    color: #38bdf8;
+    border-color: rgba(14, 165, 233, 0.2);
+}
+.mitre-tag.tactic-reconnaissance .tactic-dot { background: #0ea5e9; box-shadow: 0 0 6px rgba(14, 165, 233, 0.5); }
+.mitre-tag.tactic-reconnaissance:hover { background: rgba(14, 165, 233, 0.18); box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15); }
+
+/* ─── Tooltip ─── */
+.mitre-tag-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+
+.mitre-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) scale(0.95);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 100;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.mitre-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(15, 23, 42, 0.95);
+}
+
+.mitre-tag-wrapper:hover .mitre-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+}
+
+.mitre-tooltip-name {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #f1f5f9;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.mitre-tooltip-tactic {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ─── Light Theme ─── */
+body[data-theme="light"] .mitre-tooltip {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+body[data-theme="light"] .mitre-tooltip::after {
+    border-top-color: rgba(255, 255, 255, 0.95);
+}
+body[data-theme="light"] .mitre-tooltip-name {
+    color: #1e293b;
+}

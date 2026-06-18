@@ -6,9 +6,9 @@ from sklearn.ensemble import IsolationForest
 
 # Fix import for project root execution
 try:
-    from backend.ml.feature_extractor import FeatureExtractor
+    from backend.ml.feature_engineering_complete import CompleteFeatureExtractor
 except ImportError:
-    from ml.feature_extractor import FeatureExtractor
+    from ml.feature_engineering_complete import CompleteFeatureExtractor
 
 # Path to save the trained model
 MODEL_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "ml_models", "registry", "anomaly_detector.pkl"))
@@ -25,9 +25,9 @@ class AnomalyDetector:
         # The Brain: Isolation Forest
         # contamination=0.1 means we expect ~10% of traffic to be attacks
         self.model = IsolationForest(
-            n_estimators=100, contamination=0.1, random_state=42
+            n_estimators=100, contamination=0.15, random_state=42
         )
-        self.extractor = FeatureExtractor()
+        self.extractor = CompleteFeatureExtractor()
         self.mitigator = MitigationEngine()
         self.is_trained = False
 

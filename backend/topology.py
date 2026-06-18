@@ -1,9 +1,19 @@
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.node import Controller, RemoteController
-from mininet.cli import CLI
-from mininet.log import setLogLevel
-from mininet.link import TCLink
+try:
+    from mininet.topo import Topo
+    from mininet.net import Mininet
+    from mininet.node import Controller, RemoteController
+    from mininet.cli import CLI
+    from mininet.log import setLogLevel
+    from mininet.link import TCLink
+except ImportError:
+    # Fallback for Windows/CI where mininet isn't installed
+    class Topo: pass
+    Mininet = None
+    Controller = None
+    RemoteController = None
+    CLI = None
+    def setLogLevel(level): pass
+    TCLink = None
 
 
 class PhantomTopo(Topo):
