@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaShieldAlt, FaTerminal } from "react-icons/fa";
 import PlaybookCard from "../components/sentinel/PlaybookCard";
 import MitreTag from "../components/sentinel/MitreTag";
 import RulePreview from "../components/sentinel/RulePreview";
+import PlaybookViewer from "../components/sentinel/PlaybookViewer";
 import "../Styles/pages/SentinelDashboard.css";
 
 /* Sample playbooks to preview PlaybookCard variants */
@@ -73,6 +74,150 @@ const sampleTechniques = [
   { techniqueId: "T1119",     techniqueName: "Automated Collection",      tactic: "collection" },
 ];
 
+/* Rich details for PlaybookViewer modal */
+const playbookDetails = {
+  "T1003.001": {
+    markdownContent: `# OS Credential Dumping: LSASS Memory
+
+## Incident Response Workflow
+1. **Host Isolation**: Immediately isolate the compromised endpoint from the network.
+2. **Memory Analysis**: Capture and analyze physical memory (if possible) to extract process lineage.
+3. **Password Reset**: Enforce credential revocation and password reset for all compromised/associated accounts.
+4. **Credential Rotation**: Force rotation of Active Directory krbtgt account keys.
+
+## Mitigation Guidance
+- Enable Windows LSA Protection (\`RunAsPPL\`).
+- Implement Credential Guard on supported Windows editions.
+- Restrict Debug Privileges (\`SeDebugPrivilege\`) via Group Policy.`,
+    snortRule: `alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"ET EXPLOIT Possible LSASS Dump over SMB"; flow:to_server,established; content:"|ff|SMB"; depth:4; content:"lsass"; nocase; sid:2024003; rev:1;)`,
+    sigmaRule: `title: LSASS Memory Dumping via Procdump
+id: ffa81d86-063a-4a87-bf71-3246a1e8e1d5
+status: stable
+description: Detects procdump writing to lsass memory
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains:
+      - 'procdump'
+      - 'lsass'
+  condition: selection
+level: critical`
+  },
+  "T1021.002": {
+    markdownContent: `# Lateral Movement: SMB/Windows Admin Shares
+
+## Incident Response Workflow
+1. **Network Containment**: Block outbound SMB traffic (Port 445/139) from the source host.
+2. **Access Control Audit**: Verify which credentials were used to authenticate via SMB.
+3. **Session Revocation**: Revoke all active SMB and user sessions on the target machine.
+4. **Log Review**: Review Event ID 4624 (Successful Logon) and 4625 (Failed Logon) with Logon Type 3.
+
+## Mitigation Guidance
+- Restrict Local Admin account reuse across machines (use LAPS).
+- Block lateral SMB connection between endpoints using Host Firewalls.
+- Require SMB signing/encryption.`,
+    snortRule: `alert tcp $HOME_NET any -> $HOME_NET 445 (msg:"INTERNAL Lateral Movement via SMB Share"; flow:to_server,established; content:"|5c 00 41 00 44 00 4d 00 49 00 4e 00 24|"; msg:"Access to ADMIN$ share"; sid:2024004; rev:1;)`,
+    sigmaRule: `title: SMB Lateral Movement Logon
+id: cba72186-063a-4a87-bf71-3246a1e8e1d5
+status: stable
+description: Detects remote lateral movement logons via SMB
+logsource:
+  category: authentication
+  product: windows
+detection:
+  selection:
+    EventID: 4624
+    LogonType: 3
+    IpAddress|not: '127.0.0.1'
+  condition: selection
+level: high`
+  },
+  "T1059.001": {
+    markdownContent: `# Execution: PowerShell Download Cradle
+
+## Incident Response Workflow
+1. **Process Mitigation**: Kill the parent process and PowerShell execution stream.
+2. **Command Reconstruction**: Reconstruct the script executed from command-line arguments or transcript logs.
+3. **Network Check**: Verify any outbound connections established by \`powershell.exe\`.
+4. **Host Scan**: Scan local directories for downloaded payloads.
+
+## Mitigation Guidance
+- Enforce PowerShell Constrained Language Mode.
+- Implement AppLocker or WDAC to restrict PowerShell script execution.
+- Enable PowerShell Transcript Logging and Script Block Logging.`,
+    snortRule: `alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"EXTERNAL PowerShell User-Agent Detected"; flow:to_server,established; content:"WindowsPowerShell"; http_header; sid:2024005; rev:1;)`,
+    sigmaRule: `title: Suspicious PowerShell Download Cradle
+id: 3b6ab547-1c3b-4a85-bf71-3246a1e8e1d5
+status: experimental
+description: Detects suspicious PowerShell download cradle patterns
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains|all:
+      - 'powershell'
+      - 'downloadstring'
+  condition: selection
+level: high`
+  },
+  "T1071.004": {
+    markdownContent: `# Command and Control: DNS Tunneling Detection
+
+## Incident Response Workflow
+1. **Traffic Analysis**: Inspect TXT, CNAME, and Null DNS query responses for encoded payloads.
+2. **Host Quarantine**: Isolate the endpoint requesting abnormal subdomains.
+3. **DNS Sinkholing**: Route the malicious C2 domain to a local sinkhole.
+4. **Log Retention**: Pull DNS server query logs for historical lookup analysis.
+
+## Mitigation Guidance
+- Implement DNS filtering and query rate-limiting.
+- Inspect outbound DNS requests for high entropy and subdomain length.
+- Block direct external DNS queries from endpoints; force routing through corporate resolvers.`,
+    snortRule: `alert udp $HOME_NET any -> $EXTERNAL_NET 53 (msg:"EXTERNAL High Rate DNS Queries (Tunneling)"; content:"|00 00 10 00 01|"; threshold:type threshold, track by_src, count 100, seconds 5; sid:2024006; rev:1;)`,
+    sigmaRule: `title: DNS Tunneling Pattern Detection
+id: 116ab547-1c3b-4a85-bf71-3246a1e8e1d5
+status: experimental
+description: Detects unusual DNS TXT query rates indicative of tunneling
+logsource:
+  category: dns
+detection:
+  selection:
+    QueryType: TXT
+    QueryLength|gt: 100
+  condition: selection
+level: high`
+  }
+};
+
+const defaultDetails = {
+  markdownContent: `# Threat Playbook
+
+## Summary
+General mitigation and response strategy for the specified threat.
+
+## Remediation Checklist
+- [ ] Review system access logs for the affected time window.
+- [ ] Verify endpoint firewall configurations.
+- [ ] Conduct a full credential sweep on the host.
+- [ ] Re-run vulnerability scan on the endpoint.`,
+  snortRule: `alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg:"SUSPICIOUS General Network Activity"; flow:to_server,established; sid:2024999; rev:1;)`,
+  sigmaRule: `title: General Suspicious Activity Detection
+id: efa82186-063a-4a87-bf71-3246a1e8e1d5
+status: experimental
+description: Detects generic suspicious behavior indicators
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains: 'suspicious_command'
+  condition: selection
+level: medium`
+};
+
 /* Sample detection rules */
 const sampleSnortRule = `alert tcp $EXTERNAL_NET any -> $HOME_NET 445 (msg:"ET EXPLOIT Possible SMB Brute Force"; flow:to_server,established; content:"|ff|SMB"; depth:4; content:"|73 00 00 00|"; distance:0; threshold:type both, track by_src, count 5, seconds 60; classtype:attempted-admin; sid:2024001; rev:3;)
 
@@ -102,6 +247,20 @@ tags:
   - attack.t1059.001`;
 
 const SentinelDashboard = () => {
+  const [selectedPlaybook, setSelectedPlaybook] = useState(null);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  const handleCardClick = (pb) => {
+    const details = playbookDetails[pb.technique] || defaultDetails;
+    setSelectedPlaybook({
+      ...pb,
+      markdownContent: details.markdownContent,
+      snortRule: details.snortRule,
+      sigmaRule: details.sigmaRule,
+    });
+    setIsViewerOpen(true);
+  };
+
   return (
     <div className="sentinel-wrapper">
       {/* Header */}
@@ -168,10 +327,23 @@ const SentinelDashboard = () => {
         </div>
         <div className="sentinel-playbook-grid">
           {samplePlaybooks.map((pb, idx) => (
-            <PlaybookCard key={idx} {...pb} />
+            <PlaybookCard
+              key={idx}
+              {...pb}
+              onClick={() => handleCardClick(pb)}
+            />
           ))}
         </div>
       </div>
+
+      {/* Playbook Viewer Modal */}
+      {selectedPlaybook && (
+        <PlaybookViewer
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          {...selectedPlaybook}
+        />
+      )}
     </div>
   );
 };
