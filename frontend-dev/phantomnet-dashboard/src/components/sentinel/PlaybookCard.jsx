@@ -25,12 +25,13 @@ const PlaybookCard = ({
   status = "draft",
   date = "—",
   eventCount = 0,
+  onClick,
 }) => {
   const severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
   const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
-    <div className="playbook-card hud-font">
+    <div className="playbook-card hud-font" onClick={onClick}>
       {/* HUD Corners */}
       <div className="hud-corner top-left"></div>
       <div className="hud-corner bottom-right"></div>
