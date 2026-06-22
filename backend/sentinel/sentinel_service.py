@@ -28,11 +28,14 @@ Public API
     SentinelService(db_session)
         Instantiate with a SQLAlchemy session.
 
-    generate_playbook(campaign_data) -> dict
-        Full pipeline: infer → query → map → generate rules → build STIX
-        → render playbook → persist SentinelPlaybook row → return result dict.
+    SentinelService.create_and_run(campaign_data) -> SentinelPlaybook
+        Class-level convenience: creates session, runs pipeline, closes session.
 
-Phase 5, Week 1, Day 5 — Issue #673
+    generate_playbook(campaign_data) -> SentinelPlaybook
+        Full pipeline: infer → query → map → generate rules → build STIX
+        → render playbook → persist SentinelPlaybook row → return ORM object.
+
+Phase 5, Week 2 (Week 14), Day 1 — Integration & API
 """
 
 from __future__ import annotations
@@ -54,8 +57,9 @@ from sentinel.rule_generator import (
 from sentinel.stix_enhanced import build_stix_bundle, bundle_to_json
 from sentinel.models import SentinelPlaybook
 
-# Database models
-from database.models import PacketLog, Event
+# Database models and session
+from database.models import PacketLog, Event, IOC
+from database.database import SessionLocal
 
 # ML signature engine
 from ml.signatures import SignatureEngine
@@ -131,17 +135,76 @@ class SentinelService:
     # ------------------------------------------------------------------
     @property
     def playbook_gen(self):
-        """Lazy-load PlaybookGenerator to avoid import-time side effects."""
+        """Lazy-load PlaybookGenerator to avoid import-time side effects.
+
+        Attempts import from backend/sentinel first, then falls back to
+        the root sentinel package where PlaybookGenerator and its Jinja2
+        templates actually reside.
+        """
         if self._playbook_gen is None:
             try:
                 from sentinel.playbook_generator import PlaybookGenerator
                 self._playbook_gen = PlaybookGenerator()
-            except ImportError:
-                logger.warning(
-                    "PlaybookGenerator not available — playbook rendering "
-                    "will return a placeholder."
-                )
+            except (ImportError, Exception):
+                # Fallback: root-level sentinel package has the generator
+                try:
+                    import os, sys
+                    root_dir = os.path.abspath(
+                        os.path.join(os.path.dirname(__file__), "..", "..")
+                    )
+                    if root_dir not in sys.path:
+                        sys.path.insert(0, root_dir)
+                    # Import from root sentinel package
+                    from importlib import import_module
+                    mod = import_module("sentinel.playbook_generator")
+                    PlaybookGenerator = mod.PlaybookGenerator
+                    self._playbook_gen = PlaybookGenerator()
+                    logger.info(
+                        "PlaybookGenerator loaded from root sentinel package"
+                    )
+                except Exception:
+                    logger.warning(
+                        "PlaybookGenerator not available — playbook rendering "
+                        "will return a placeholder."
+                    )
         return self._playbook_gen
+
+    # ------------------------------------------------------------------
+    # Class-level convenience: session lifecycle management
+    # ------------------------------------------------------------------
+    @classmethod
+    def create_and_run(
+        cls, campaign_data: Dict[str, Any]
+    ) -> SentinelPlaybook:
+        """Create a DB session, run the full pipeline, close the session.
+
+        This is the recommended entry point for callers that do not
+        already hold an open SQLAlchemy session.  The session is
+        created from the existing ``SessionLocal`` factory, used for
+        the entire pipeline, and closed in the ``finally`` block.
+
+        Args:
+            campaign_data: Campaign clustering output dict.
+
+        Returns:
+            The persisted SentinelPlaybook ORM object (detached from
+            the now-closed session — all attributes are eagerly loaded
+            before close).
+
+        Raises:
+            Exception: Re-raises any pipeline error after session cleanup.
+        """
+        db = SessionLocal()
+        try:
+            svc = cls(db)
+            playbook = svc.generate_playbook(campaign_data)
+            return playbook
+        except Exception:
+            db.rollback()
+            raise
+        finally:
+            db.close()
+            logger.info("DB session closed (create_and_run)")
 
     # ------------------------------------------------------------------
     # Step 1: Infer service type from target ports
@@ -232,10 +295,68 @@ class SentinelService:
 
         results = query.order_by(PacketLog.timestamp.desc()).limit(500).all()
         logger.info(
-            "PacketLog query: %d rows matched (ips=%d, ports=%s)",
+            "PacketLog query: %d rows matched (ips=%d, ports=%s, time_range=%s)",
             len(results), len(source_ips), int_ports,
+            "yes" if time_range else "no",
         )
         return results
+
+    # ------------------------------------------------------------------
+    # Step 2b: Query IOC table for enrichment
+    # ------------------------------------------------------------------
+    def _query_iocs(
+        self,
+        source_ips: List[str],
+    ) -> List[Any]:
+        """Query the IOC table for entries matching the campaign's source IPs.
+
+        This enriches the pipeline with threat intelligence previously
+        ingested into the IOC table (IP-type indicators, watchlist flags,
+        threat_level ratings).
+
+        Args:
+            source_ips: List of attacker source IP strings.
+
+        Returns:
+            List of matching IOC ORM objects.
+        """
+        if not source_ips:
+            return []
+
+        try:
+            ioc_rows = (
+                self.db.query(IOC)
+                .filter(
+                    IOC.type == "IP",
+                    IOC.value.in_(source_ips),
+                )
+                .all()
+            )
+            logger.info(
+                "IOC query: %d rows matched for %d source IPs",
+                len(ioc_rows), len(source_ips),
+            )
+            return ioc_rows
+        except Exception as exc:
+            logger.warning("IOC query failed: %s — continuing without IOC enrichment", exc)
+            return []
+
+    # ------------------------------------------------------------------
+    # Derive max threat_level string from IOC rows
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _max_ioc_threat_level(ioc_rows: List[Any]) -> Optional[str]:
+        """Return the highest threat_level from matched IOC rows."""
+        level_order = {"Low": 1, "Medium": 2, "High": 3, "Critical": 4}
+        best_level = None
+        best_rank = 0
+        for ioc in ioc_rows:
+            lvl = getattr(ioc, "threat_level", None) or "Medium"
+            rank = level_order.get(lvl, 2)
+            if rank > best_rank:
+                best_rank = rank
+                best_level = lvl
+        return best_level
 
     # ------------------------------------------------------------------
     # Step 3: Run SignatureEngine on events for matched IPs
@@ -349,12 +470,13 @@ class SentinelService:
     # ------------------------------------------------------------------
     # Core public API: generate_playbook()
     # ------------------------------------------------------------------
-    def generate_playbook(self, campaign_data: Dict[str, Any]) -> Dict[str, Any]:
+    def generate_playbook(self, campaign_data: Dict[str, Any]) -> SentinelPlaybook:
         """Full Sentinel pipeline for a single campaign cluster.
 
-        Performs the 4-step inference process:
+        Performs the complete inference and generation process:
           1. Infer service from target_ports
           2. Query PacketLog for matching IPs + timestamps → threat_levels
+          2b. Query IOC table for threat intelligence enrichment
           3. Run SignatureEngine on events → detected signature names
           4. Map signatures via mitre_mapper → ATT&CK technique
           5. Generate Snort/Sigma rules via rule_generator
@@ -373,15 +495,9 @@ class SentinelService:
                 - campaign_id:  str (optional)
 
         Returns:
-            Dict with all generated artefacts:
-                - playbook_id, campaign_id
-                - service_type, attack_type, protocol
-                - technique (MITRE ATT&CK dict)
-                - snort_rule, sigma_rule
-                - stix_bundle_json
-                - playbook_content, playbook_name, template_name
-                - threat_score
-                - matched_logs_count, signatures_stored_count
+            SentinelPlaybook ORM object persisted in the database.
+            The object carries a ``result_dict`` attribute with all
+            generated artefacts for convenience.
         """
         logger.info("═" * 60)
         logger.info("SentinelService.generate_playbook() — START")
@@ -421,6 +537,15 @@ class SentinelService:
         matched_logs = self._query_packet_logs(source_ips, normalised_ports, time_range)
         threat_score = self._avg_threat_score(matched_logs)
         logger.info("Step 2 — Matched %d PacketLog rows, avg threat_score=%.2f", len(matched_logs), threat_score)
+
+        # ── Step 2b: Query IOC table for enrichment ───────────────────────
+        ioc_rows = self._query_iocs(source_ips)
+        ioc_threat_level = self._max_ioc_threat_level(ioc_rows)
+        if ioc_threat_level:
+            logger.info("Step 2b — IOC enrichment: %d IOCs, max threat_level=%s",
+                        len(ioc_rows), ioc_threat_level)
+        else:
+            logger.info("Step 2b — No IOC matches found for source IPs")
 
         # ── Step 3: Run SignatureEngine on events ─────────────────────────
         signature_names = self._run_signature_analysis(source_ips, service_type)
@@ -468,17 +593,31 @@ class SentinelService:
                      rules_result["metadata"]["sigma_rule_count"])
 
         # ── Step 6: Build STIX 2.1 bundle ─────────────────────────────────
+        # Merge source IPs as IOCs + any IOC table entries
         iocs = [{"type": "ip", "value": ip} for ip in source_ips]
+        for ioc_row in ioc_rows:
+            ioc_entry = {"type": ioc_row.type.lower(), "value": ioc_row.value}
+            if ioc_entry not in iocs:
+                iocs.append(ioc_entry)
         src_ip_primary = source_ips[0] if source_ips else None
+
+        # Use IOC threat_level to influence TLP if available
+        if ioc_threat_level in ("Critical", "High") or threat_score >= 70:
+            tlp = "amber"
+        elif ioc_threat_level == "Medium" or threat_score >= 40:
+            tlp = "green"
+        else:
+            tlp = "green"
+
         stix_bundle = build_stix_bundle(
             technique=primary_technique,
             iocs=iocs,
             src_ip=src_ip_primary,
             threat_score=threat_score,
-            tlp_level="amber" if threat_score >= 70 else "green",
+            tlp_level=tlp,
         )
         stix_json = bundle_to_json(stix_bundle, pretty=True)
-        logger.info("Step 6 — STIX bundle: %d objects", len(stix_bundle.objects))
+        logger.info("Step 6 — STIX bundle: %d objects, tlp=%s", len(stix_bundle.objects), tlp)
 
         # ── Step 7: Render playbook ───────────────────────────────────────
         playbook_name = f"{service_type} {primary_technique.get('technique_name', 'Response')} Playbook"
@@ -578,8 +717,8 @@ class SentinelService:
         logger.info("SentinelService.generate_playbook() — COMPLETE")
         logger.info("═" * 60)
 
-        # ── Return result dict ────────────────────────────────────────────
-        return {
+        # ── Attach result_dict for convenience ────────────────────────────
+        playbook_record.result_dict = {
             "playbook_id": playbook_id,
             "campaign_id": campaign_id,
             "service_type": service_type,
@@ -599,8 +738,12 @@ class SentinelService:
             "playbook_content": playbook_content,
             "template_name": template_name,
             "threat_score": threat_score,
+            "ioc_threat_level": ioc_threat_level,
+            "ioc_count": len(ioc_rows),
             "matched_logs_count": len(matched_logs),
             "signatures_stored_count": sigs_stored,
             "detected_signatures": signature_names,
             "db_record_id": playbook_record.id,
         }
+
+        return playbook_record
