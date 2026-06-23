@@ -581,8 +581,8 @@ class SentinelService:
 
         # ── Step 5: Generate Snort/Sigma rules ────────────────────────────
         rules_result = generate_rules_for_campaign(
-            cluster_data=campaign_data,
-            mitre_info=techniques if techniques else primary_technique,
+            campaign_data,
+            techniques if techniques else primary_technique,
         )
         snort_rule = rules_result.get("snort_rules", "")
         sigma_rule = rules_result.get("sigma_rules", "")
