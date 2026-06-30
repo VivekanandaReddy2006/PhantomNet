@@ -14,13 +14,14 @@ Import this module BEFORE ``Base.metadata.create_all()`` is called in
 ``backend/main.py`` so SQLAlchemy sees the model and creates the table.
 This is already wired in main.py under the Sentinel Models section.
 
-SentinelPlaybook Schema (21 columns)
+SentinelPlaybook Schema (23 columns)
 -------------------------------------
   Core Identity (4)
     id, created_at, updated_at, playbook_id
 
-  Threat Context (5)
-    src_ip, dst_port, protocol, attack_type, threat_score
+  Threat Context (7)
+    src_ip, dst_port, protocol, attack_type, threat_score,
+    confidence_score, severity
 
   MITRE ATT&CK Mapping (4)
     technique_id, technique_name, tactic, mitre_url
@@ -150,6 +151,28 @@ class SentinelPlaybook(Base):
         comment="ML threat confidence score in range 0.0–100.0",
     )
 
+    confidence_score = Column(
+        Float,
+        nullable=True,
+        default=None,
+        comment=(
+            "Composite playbook confidence score in range 0.0–1.0. "
+            "Computed from cluster_size_score, ml_avg_score, ioc_density, "
+            "and multi_proto_bonus via weighted average in confidence_scoring.py."
+        ),
+    )
+
+    severity = Column(
+        String(16),
+        nullable=True,
+        default=None,
+        index=True,
+        comment=(
+            "Severity tier derived from confidence_score: "
+            "CRITICAL (>=0.8) | HIGH (>=0.6) | MEDIUM (>=0.4) | LOW (<0.4)"
+        ),
+    )
+
     # ── 3. MITRE ATT&CK Mapping ──────────────────────────────────────────────
     #   technique_id   : e.g. "T1110.001"
     #   technique_name : e.g. "Brute Force: Password Guessing"
@@ -253,12 +276,13 @@ class SentinelPlaybook(Base):
     def __repr__(self) -> str:  # pragma: no cover
         return (
             f"<SentinelPlaybook id={self.id} playbook_id={self.playbook_id!r} "
-            f"attack_type={self.attack_type!r} status={self.status!r}>"
+            f"attack_type={self.attack_type!r} confidence={self.confidence_score} "
+            f"severity={self.severity!r} status={self.status!r}>"
         )
 
     def to_dict(self) -> dict:
         """
-        Serialize all 21 columns to a plain dictionary.
+        Serialize all 23 columns to a plain dictionary.
 
         Used by the REST API (api/sentinel.py) to build JSON responses without
         importing Pydantic schemas in the model layer.
@@ -278,6 +302,8 @@ class SentinelPlaybook(Base):
             "protocol":         self.protocol,
             "attack_type":      self.attack_type,
             "threat_score":     self.threat_score,
+            "confidence_score": self.confidence_score,
+            "severity":         self.severity,
             # MITRE ATT&CK
             "technique_id":     self.technique_id,
             "technique_name":   self.technique_name,

@@ -51,6 +51,7 @@ from sentinel.mitre_mapper import map_signature, map_signatures
 from sentinel.rule_generator import generate_rules_for_campaign
 from sentinel.stix_enhanced import build_stix_bundle, bundle_to_json
 from sentinel.models import SentinelPlaybook
+from sentinel.confidence_scoring import calculate_confidence, ConfidenceResult
 
 # Database models and session
 from database.models import PacketLog, Event, IOC
@@ -452,6 +453,28 @@ class SentinelService:
         return updated
 
     # ------------------------------------------------------------------
+    # Collect ML anomaly scores from matched packet logs
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _collect_ml_scores(packet_logs: List[PacketLog]) -> List[float]:
+        """Extract all non-None, positive threat_score values from PacketLog rows.
+
+        These are used as the ``ml_scores`` input to ``calculate_confidence()``.
+        Scores are expected on the 0–100 scale (PacketLog.threat_score convention).
+
+        Args:
+            packet_logs: List of PacketLog ORM objects from Step 2 query.
+
+        Returns:
+            List of float threat scores.  Empty list when no valid scores exist.
+        """
+        return [
+            float(p.threat_score)
+            for p in packet_logs
+            if p.threat_score is not None and p.threat_score > 0
+        ]
+
+    # ------------------------------------------------------------------
     # Extract average threat score from matched logs
     # ------------------------------------------------------------------
     @staticmethod
@@ -544,6 +567,29 @@ class SentinelService:
                         len(ioc_rows), ioc_threat_level)
         else:
             logger.info("Step 2b — No IOC matches found for source IPs")
+
+        # ── Step 2c: Calculate confidence score ───────────────────────────
+        ml_scores = self._collect_ml_scores(matched_logs)
+        # unique_ioc_count = unique source IPs observed (IOC proxy from source_ips)
+        unique_ioc_count = len(set(source_ips))
+        confidence_result: ConfidenceResult = calculate_confidence(
+            event_count=event_count,
+            ml_scores=ml_scores,
+            unique_ioc_count=unique_ioc_count,
+            protocols=protocols,
+            cluster_size_cap=200,
+        )
+        confidence_score = confidence_result.confidence
+        confidence_severity = confidence_result.severity
+        logger.info(
+            "Step 2c — Confidence score: %.4f  severity=%s  "
+            "(css=%.3f mlas=%.3f iod=%.3f mpb=%.1f)",
+            confidence_score, confidence_severity,
+            confidence_result.cluster_size_score,
+            confidence_result.ml_avg_score,
+            confidence_result.ioc_density,
+            confidence_result.multi_proto_bonus,
+        )
 
         # ── Step 3: Run SignatureEngine on events ─────────────────────────
         signature_names = self._run_signature_analysis(source_ips, service_type)
@@ -685,6 +731,8 @@ class SentinelService:
             protocol=protocol_str,
             attack_type=attack_type,
             threat_score=threat_score,
+            confidence_score=confidence_score,
+            severity=confidence_severity,
             technique_id=primary_technique.get("technique_id"),
             technique_name=primary_technique.get("technique_name"),
             tactic=primary_technique.get("tactic"),
@@ -736,6 +784,9 @@ class SentinelService:
             "playbook_content": playbook_content,
             "template_name": template_name,
             "threat_score": threat_score,
+            "confidence_score": confidence_score,
+            "severity": confidence_severity,
+            "confidence_breakdown": confidence_result.breakdown,
             "ioc_threat_level": ioc_threat_level,
             "ioc_count": len(ioc_rows),
             "matched_logs_count": len(matched_logs),
