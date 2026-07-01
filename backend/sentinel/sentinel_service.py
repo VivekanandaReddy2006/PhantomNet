@@ -1,4 +1,4 @@
-﻿"""
+"""
 backend/sentinel/sentinel_service.py
 --------------------------------------
 PhantomNet Sentinel Layer ΓÇö Orchestration Service
@@ -460,7 +460,7 @@ class SentinelService:
         """Extract all non-None, positive threat_score values from PacketLog rows.
 
         These are used as the ``ml_scores`` input to ``calculate_confidence()``.
-        Scores are expected on the 0ΓÇô100 scale (PacketLog.threat_score convention).
+        Scores are expected on the 0–100 scale (PacketLog.threat_score convention).
 
         Args:
             packet_logs: List of PacketLog ORM objects from Step 2 query.
@@ -568,7 +568,7 @@ class SentinelService:
         else:
             logger.info("Step 2b ΓÇö No IOC matches found for source IPs")
 
-        # ΓöÇΓöÇ Step 2c: Calculate confidence score ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        # ── Step 2c: Calculate confidence score ───────────────────────────
         ml_scores = self._collect_ml_scores(matched_logs)
         # unique_ioc_count = unique source IPs observed (IOC proxy from source_ips)
         unique_ioc_count = len(set(source_ips))
@@ -582,7 +582,7 @@ class SentinelService:
         confidence_score = confidence_result.confidence
         confidence_severity = confidence_result.severity
         logger.info(
-            "Step 2c ΓÇö Confidence score: %.4f  severity=%s  "
+            "Step 2c — Confidence score: %.4f  severity=%s  "
             "(css=%.3f mlas=%.3f iod=%.3f mpb=%.1f)",
             confidence_score, confidence_severity,
             confidence_result.cluster_size_score,
@@ -591,7 +591,7 @@ class SentinelService:
             confidence_result.multi_proto_bonus,
         )
 
-        # ΓöÇΓöÇ Step 3: Run SignatureEngine on events ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+        # ── Step 3: Run SignatureEngine on events ─────────────────────────
         signature_names = self._run_signature_analysis(source_ips, service_type)
         logger.info("Step 3 ΓÇö Detected signatures: %s", signature_names)
 

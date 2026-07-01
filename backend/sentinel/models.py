@@ -1,4 +1,4 @@
-﻿"""
+"""
 backend/sentinel/models.py
 ---------------------------
 PhantomNet Sentinel Layer ΓÇö Database Models
@@ -156,7 +156,7 @@ class SentinelPlaybook(Base):
         nullable=True,
         default=None,
         comment=(
-            "Composite playbook confidence score in range 0.0ΓÇô1.0. "
+            "Composite playbook confidence score in range 0.0–1.0. "
             "Computed from cluster_size_score, ml_avg_score, ioc_density, "
             "and multi_proto_bonus via weighted average in confidence_scoring.py."
         ),
@@ -173,7 +173,7 @@ class SentinelPlaybook(Base):
         ),
     )
 
-    # ΓöÇΓöÇ 3. MITRE ATT&CK Mapping ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── 3. MITRE ATT&CK Mapping ──────────────────────────────────────────────
     #   technique_id   : e.g. "T1110.001"
     #   technique_name : e.g. "Brute Force: Password Guessing"
     #   tactic         : e.g. "Credential Access"

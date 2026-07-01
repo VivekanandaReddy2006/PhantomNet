@@ -1,15 +1,16 @@
-﻿"""
+"""
 backend/sentinel/confidence_scoring.py
 ----------------------------------------
-PhantomNet Sentinel Layer ΓÇö Playbook Confidence Scoring Engine
+PhantomNet Sentinel Layer — Playbook Confidence Scoring Engine
 
-Calculates a composite confidence score (0.0ΓÇô1.0) for a detected campaign
+Calculates a composite confidence score (0.0–1.0) for a detected campaign
 cluster using four weighted component signals:
 
-  1. cluster_size_score  ΓÇö normalised event count (more events ΓåÆ more certain)
-  2. ml_avg_score        ΓÇö average ML anomaly/threat score across cluster events
-  3. ioc_density         ΓÇö ratio of unique IOC IPs to total events
-  4. multi_proto_bonus   ΓÇö bonus when the campaign spans multiple protocols
+  1. cluster_size_score  — normalised event count (more events → more certain)
+  2. ml_avg_score        — average ML anomaly/threat score across cluster events
+  3. ioc_density         — ratio of unique IOC IPs to total events
+  4. multi_proto_bonus   — bonus when the campaign spans multiple protocols
+
 
 Weighted Average Formula
 ------------------------
@@ -21,17 +22,17 @@ Weighted Average Formula
   )
 
 Default weights (sum to 1.0):
-  w_cluster  = 0.35   (biggest weight ΓÇö cluster size is strong evidence)
+  w_cluster  = 0.35   (biggest weight — cluster size is strong evidence)
   w_ml       = 0.35   (ML score is highly reliable when available)
   w_ioc      = 0.20   (IOC density is corroborating evidence)
   w_multi    = 0.10   (multi-protocol campaigns are more sophisticated)
 
 Severity Mapping
 ----------------
-  confidence >= 0.80  ΓåÆ  CRITICAL
-  confidence >= 0.60  ΓåÆ  HIGH
-  confidence >= 0.40  ΓåÆ  MEDIUM
-  confidence <  0.40  ΓåÆ  LOW
+  confidence >= 0.80  →  CRITICAL
+  confidence >= 0.60  →  HIGH
+  confidence >= 0.40  →  MEDIUM
+  confidence <  0.40  →  LOW
 
 Public API
 ----------
@@ -47,7 +48,7 @@ Public API
   confidence_to_severity(confidence: float) -> str
 
   ConfidenceResult  (NamedTuple)
-      confidence      : float   (0.0ΓÇô1.0, clamped)
+      confidence      : float   (0.0–1.0, clamped)
       severity        : str     (CRITICAL | HIGH | MEDIUM | LOW)
       cluster_size_score : float
       ml_avg_score    : float
@@ -124,7 +125,7 @@ class ConfidenceResult(NamedTuple):
 
 def confidence_to_severity(confidence: float) -> str:
     """
-    Map a confidence score (0.0ΓÇô1.0) to a severity tier string.
+    Map a confidence score (0.0–1.0) to a severity tier string.
 
     Args:
         confidence: Composite score, expected in [0.0, 1.0].
@@ -160,7 +161,7 @@ def _normalise_cluster_size(event_count: int, cap: int = 200) -> float:
 
     Args:
         event_count: Number of events in the cluster.
-        cap:         Saturation point (default 200 events ΓåÆ score 1.0).
+        cap:         Saturation point (default 200 events → score 1.0).
 
     Returns:
         Float in [0.0, 1.0].
@@ -187,11 +188,11 @@ def _normalise_ml_scores(ml_scores: Sequence[float]) -> float:
     """
     Average a list of ML anomaly scores and normalise to [0.0, 1.0].
 
-    Scores are assumed to be in the range 0ΓÇô100 (PacketLog.threat_score
+    Scores are assumed to be in the range 0–100 (PacketLog.threat_score
     convention).  Values outside this range are clamped before averaging.
 
     Args:
-        ml_scores: Iterable of float anomaly/threat scores (0ΓÇô100 scale).
+        ml_scores: Iterable of float anomaly/threat scores (0–100 scale).
 
     Returns:
         Float in [0.0, 1.0].  Returns 0.0 when the list is empty.
@@ -301,7 +302,7 @@ def calculate_confidence(
 
     Args:
         event_count:       Total number of events in the cluster.
-        ml_scores:         List of ML threat/anomaly scores (0ΓÇô100 scale)
+        ml_scores:         List of ML threat/anomaly scores (0–100 scale)
                            from PacketLog rows associated with this cluster.
         unique_ioc_count:  Number of distinct IOC IP addresses observed.
         protocols:         List of network protocol strings from the cluster.
@@ -323,7 +324,7 @@ def calculate_confidence(
 
     Raises:
         ValueError: If a supplied weight dict has keys that don't sum to ~1.0
-                    (tolerance ┬▒0.02) to guard against misconfiguration.
+                    (tolerance ±0.02) to guard against misconfiguration.
 
     Examples
     --------
@@ -339,7 +340,7 @@ def calculate_confidence(
     >>> result.severity in ("CRITICAL", "HIGH", "MEDIUM", "LOW")
     True
     """
-    # ΓöÇΓöÇ Resolve weights ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── Resolve weights ───────────────────────────────────────────────────
     w = dict(DEFAULT_WEIGHTS)
     if weights is not None:
         w.update(weights)
@@ -355,13 +356,13 @@ def calculate_confidence(
     w_ioc     = w.get("ioc_density",  DEFAULT_WEIGHTS["ioc_density"])
     w_multi   = w.get("multi_proto",  DEFAULT_WEIGHTS["multi_proto"])
 
-    # ΓöÇΓöÇ Compute components ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── Compute components ────────────────────────────────────────────────
     css  = _normalise_cluster_size(event_count, cap=cluster_size_cap)
     mlas = _normalise_ml_scores(ml_scores)
     iod  = _calculate_ioc_density(unique_ioc_count, event_count)
     mpb  = _multi_proto_bonus(protocols)
 
-    # ΓöÇΓöÇ Weighted average ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # ── Weighted average ──────────────────────────────────────────────────
     raw_confidence = (
         w_cluster * css
         + w_ml    * mlas
