@@ -11,6 +11,7 @@ cluster using four weighted component signals:
   3. ioc_density         — ratio of unique IOC IPs to total events
   4. multi_proto_bonus   — bonus when the campaign spans multiple protocols
 
+
 Weighted Average Formula
 ------------------------
   confidence = (
