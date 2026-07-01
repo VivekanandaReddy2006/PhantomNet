@@ -39,6 +39,48 @@ import logging
 
 _logger = logging.getLogger("sentinel.rule_generator")
 
+# ---------------------------------------------------------------------------
+# ATT&CK Tactic → Sigma Tag Map
+# Maps MITRE tactic names to standard Sigma attack.<tactic_slug> tags.
+# Reference: https://github.com/SigmaHQ/sigma/blob/master/tags/attack.md
+# ---------------------------------------------------------------------------
+_TACTIC_SIGMA_TAG: dict[str, str] = {
+    "Reconnaissance":        "attack.reconnaissance",
+    "Resource Development":  "attack.resource_development",
+    "Initial Access":        "attack.initial_access",
+    "Execution":             "attack.execution",
+    "Persistence":           "attack.persistence",
+    "Privilege Escalation":  "attack.privilege_escalation",
+    "Defense Evasion":       "attack.defense_evasion",
+    "Credential Access":     "attack.credential_access",
+    "Discovery":             "attack.discovery",
+    "Lateral Movement":      "attack.lateral_movement",
+    "Collection":            "attack.collection",
+    "Command and Control":   "attack.command_and_control",
+    "Exfiltration":          "attack.exfiltration",
+    "Impact":                "attack.impact",
+}
+
+
+def get_tactic_sigma_tag(tactic: str) -> "str | None":
+    """Return the standard Sigma tactic tag for a MITRE tactic name.
+
+    Examples::
+
+        get_tactic_sigma_tag("Credential Access")  # -> "attack.credential_access"
+        get_tactic_sigma_tag("Unknown Tactic")      # -> None
+
+    Args:
+        tactic: MITRE ATT&CK tactic name (e.g. "Credential Access").
+
+    Returns:
+        Sigma-formatted tactic tag string, or None if the tactic is not mapped.
+    """
+    if not isinstance(tactic, str):
+        return None
+    return _TACTIC_SIGMA_TAG.get(tactic.strip())
+
+
 def _find_data_dir() -> str:
     current = os.path.dirname(os.path.abspath(__file__))
     for _ in range(5):
@@ -332,6 +374,7 @@ def generate_sigma_rule(
     status: str = "experimental",
     tags: typing.Optional[typing.Union[str, list[str]]] = None,
     technique_id: typing.Optional[str] = None,
+    tactic: typing.Optional[str] = None,
 ) -> str:
     """
     Generates a valid Sigma rule in YAML format.
@@ -344,6 +387,10 @@ def generate_sigma_rule(
         status:       Status of the rule (default: 'experimental').
         tags:         Optional tags (list of strings or space/comma separated string).
         technique_id: Optional MITRE ATT&CK technique ID or URL to format as an attack tag.
+        tactic:       Optional MITRE ATT&CK tactic name (e.g. "Credential Access").
+                      When provided the corresponding Sigma tactic tag is automatically
+                      appended (e.g. "attack.credential_access") alongside the technique
+                      tag, satisfying the Sigma ATT&CK tag specification.
 
     Returns:
         A valid YAML string representing the Sigma rule.
@@ -392,6 +439,13 @@ def generate_sigma_rule(
             formatted = clean_and_format_tag(t)
             if formatted and formatted not in processed_tags:
                 processed_tags.append(formatted)
+
+    # 3. Auto-inject tactic tag from tactic name (Sigma ATT&CK tag spec requirement).
+    #    This ensures every rule has BOTH attack.<technique_id> AND attack.<tactic_name>.
+    if tactic:
+        tactic_tag = get_tactic_sigma_tag(tactic)
+        if tactic_tag and tactic_tag not in processed_tags:
+            processed_tags.append(tactic_tag)
 
     # Structure detection block (handle search identifiers and condition)
     detection_copy = dict(detection)
@@ -624,7 +678,8 @@ def generate_rules_for_campaign(
             severity=tech["severity"],
             status="experimental",
             tags=["campaign"],
-            technique_id=tech["technique_id"]
+            technique_id=tech["technique_id"],
+            tactic=tech.get("tactic"),  # auto-inject attack.<tactic> tag per Sigma spec
         )
         sigma_rules_list.append(rule)
 
