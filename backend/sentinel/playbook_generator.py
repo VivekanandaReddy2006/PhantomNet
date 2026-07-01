@@ -523,8 +523,93 @@ class PlaybookGenerator:
                 ]
             )
 
-        # ── 6. Event / count defaults ─────────────────────────────────
+        # ── 6. Time range & event count enrichment ────────────────────────
+        # Extract first_seen / last_seen from cluster data and produce a
+        # human-readable summary: "N events detected between HH:MM and HH:MM UTC"
+        #
+        # Accepted input formats for first_seen / last_seen:
+        #   • datetime object (aware or naïve – naïve assumed UTC)
+        #   • ISO-8601 string  e.g. "2026-06-30T08:15:00Z" or "2026-06-30T08:15:00+00:00"
+        #   • Unix timestamp   (int or float)
         ctx.setdefault("event_count", ctx.get("hit_count", 0))
+
+        # Parse a value into a datetime (UTC-aware)
+        def _parse_dt(val: Any) -> Optional[datetime]:
+            if val is None:
+                return None
+            if isinstance(val, datetime):
+                if val.tzinfo is None:
+                    return val.replace(tzinfo=timezone.utc)
+                return val
+            if isinstance(val, (int, float)):
+                try:
+                    return datetime.fromtimestamp(float(val), tz=timezone.utc)
+                except (OSError, OverflowError, ValueError):
+                    return None
+            if isinstance(val, str):
+                val = val.strip()
+                if not val or val == "N/A":
+                    return None
+                # Try common ISO patterns
+                for fmt in (
+                    "%Y-%m-%dT%H:%M:%SZ",
+                    "%Y-%m-%dT%H:%M:%S+00:00",
+                    "%Y-%m-%dT%H:%M:%S.%fZ",
+                    "%Y-%m-%dT%H:%M:%S",
+                    "%Y-%m-%d %H:%M:%S",
+                    "%Y-%m-%d",
+                ):
+                    try:
+                        dt = datetime.strptime(val, fmt)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        return dt
+                    except ValueError:
+                        continue
+                # Try Python's fromisoformat (3.7+)
+                try:
+                    dt = datetime.fromisoformat(val.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=timezone.utc)
+                    return dt
+                except ValueError:
+                    return None
+            return None
+
+        if "time_range" not in ctx:
+            first_seen_raw = ctx.get("first_seen") or ctx.get("cluster_first_seen")
+            last_seen_raw  = ctx.get("last_seen")  or ctx.get("cluster_last_seen")
+
+            dt_first = _parse_dt(first_seen_raw)
+            dt_last  = _parse_dt(last_seen_raw)
+
+            if dt_first and dt_last:
+                t_start = dt_first.strftime("%H:%M")
+                t_end   = dt_last.strftime("%H:%M")
+                ctx["time_range"] = f"{t_start}–{t_end} UTC"
+            elif dt_first:
+                ctx["time_range"] = f"from {dt_first.strftime('%H:%M')} UTC"
+            else:
+                ctx["time_range"] = "N/A"
+
+        # Build the human-readable event summary line used in templates:
+        # "147 events detected between 08:15 and 08:47 UTC"
+        if "event_summary" not in ctx:
+            n = ctx.get("event_count", 0)
+            tr = ctx.get("time_range", "N/A")
+            if tr and tr != "N/A" and "–" in tr:
+                parts = tr.replace(" UTC", "").split("–")
+                if len(parts) == 2:
+                    ctx["event_summary"] = (
+                        f"{n} event{'s' if n != 1 else ''} detected "
+                        f"between {parts[0]} and {parts[1]} UTC"
+                    )
+                else:
+                    ctx["event_summary"] = f"{n} event{'s' if n != 1 else ''} detected"
+            else:
+                ctx["event_summary"] = f"{n} event{'s' if n != 1 else ''} detected"
+
+
 
         # ── 7. Pattern-specific enrichment ────────────────────────────
         if canonical_pattern == "brute_force":
