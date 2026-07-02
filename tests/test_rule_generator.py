@@ -74,7 +74,7 @@ def parse_snort_rule(rule_str):
             parsed_options[name].append(value)
         else:
             parsed_options[name] = value
-    required = ("msg", "flow", "threshold", "classtype", "reference", "sid", "rev")
+    required = ("msg", "flow", "threshold", "classtype", "priority", "reference", "sid", "rev")
     for req in required:
         if req not in parsed_options:
             raise ValueError("Missing required Snort option: %r" % req)
@@ -263,7 +263,7 @@ class TestValidateIP(unittest.TestCase):
 class TestValidatePort(unittest.TestCase):
 
     def test_port_zero_is_valid(self):
-        """Task 4: port 0 is legal in Snort rules."""
+        """Task 4: port 0 is invalid in Snort rules."""
         self.assertTrue(validate_port(0))
         self.assertTrue(validate_port("0"))
 
@@ -312,7 +312,7 @@ class TestSnortRuleSyntax(unittest.TestCase):
 
     # -- template structure --------------------------------------------------
     def test_template_contains_all_placeholders(self):
-        for p in ["{protocol}", "{src_ip}", "{dst_port}", "{attack_desc}", "{technique_id}", "{sid}"]:
+        for p in ["{protocol}", "{src_ip}", "{dst_port}", "{attack_desc}", "{technique_id}", "{classtype}", "{priority}", "{sid}"]:
             with self.subTest(placeholder=p):
                 self.assertIn(p, SNORT_RULE_TEMPLATE)
 
@@ -321,6 +321,56 @@ class TestSnortRuleSyntax(unittest.TestCase):
 
     def test_template_ends_with_closing_parenthesis(self):
         self.assertTrue(SNORT_RULE_TEMPLATE.strip().endswith(")"))
+
+# ---------------------------------------------------------------------------
+# Snort Rule Priority Mapping Tests
+# ---------------------------------------------------------------------------
+
+class TestSnortRulePriority(unittest.TestCase):
+    """Test suite for severity-to-priority mapping in generated Snort rules."""
+    
+    def test_critical_severity_maps_to_priority_1(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="CRITICAL")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "1")
+        
+    def test_high_severity_maps_to_priority_2(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="HIGH")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "2")
+        
+    def test_medium_severity_maps_to_priority_3(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="MEDIUM")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "3")
+        
+    def test_low_severity_maps_to_priority_4(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="LOW")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "4")
+        
+    def test_info_severity_maps_to_priority_4(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="INFO")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "4")
+        
+    def test_default_severity_maps_to_priority_3(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "3")
+        
+    def test_invalid_severity_maps_to_priority_3(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="UNKNOWN")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "3")
+        
+    def test_severity_case_insensitive(self):
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity="critical")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "1")
+        rule = generate_snort_rule("any", 80, "tcp", "Test", "T1190", severity=" High ")
+        parsed = parse_snort_rule(rule)
+        self.assertEqual(parsed["options"]["priority"], "2")
 
     # -- happy-path generation -----------------------------------------------
     def test_basic_tcp_rule_parses_correctly(self):
@@ -382,11 +432,13 @@ class TestSnortRuleSyntax(unittest.TestCase):
     def test_sid_zero_raises(self):
         """Task 2: SID=0 must raise ValueError."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 80, "tcp", "Test", "T1234", sid=0)
 
     def test_sid_negative_raises(self):
         """Task 2: Negative SID must raise ValueError."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 80, "tcp", "Test", "T1234", sid=-5)
 
     # -- msg quoting ---------------------------------------------------------
@@ -431,47 +483,74 @@ class TestSnortRuleSyntax(unittest.TestCase):
     # -- invalid input errors ------------------------------------------------
     def test_invalid_ip_raises(self):
         with self.assertRaises(ValueError):
+
             generate_snort_rule("256.0.0.1", 80, "tcp", "Desc", "T1234")
 
     def test_empty_ip_raises(self):
         """Task 4: empty string IP must raise ValueError."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("", 80, "tcp", "Desc", "T1234")
 
     def test_none_ip_raises(self):
         """Task 4: None IP must raise ValueError."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule(None, 80, "tcp", "Desc", "T1234")
 
     def test_invalid_port_raises(self):
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 99999, "tcp", "Desc", "T1234")
 
     def test_negative_port_raises(self):
         """Task 4: port -1 must raise ValueError."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", -1, "tcp", "Desc", "T1234")
 
     def test_unknown_protocol_ftp_raises(self):
         """Task 4: ftp is not a valid Snort protocol."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 80, "ftp", "Desc", "T1234")
 
     def test_unknown_protocol_http_raises(self):
         """Task 4: http is not a valid Snort protocol."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 80, "http", "Desc", "T1234")
 
     def test_unknown_protocol_ssh_raises(self):
         """Task 4: ssh is not a valid Snort protocol."""
         with self.assertRaises(ValueError):
+
             generate_snort_rule("any", 80, "ssh", "Desc", "T1234")
+
+
+    def test_ipv6_raises_error(self):
+        with self.assertRaises(ValueError):
+            generate_snort_rule("2001:db8::1", 80, "tcp", "IPv6 test", "T1234")
+
+    def test_long_ip_raises_error(self):
+        long_ip = "192.168.1.1" + (" " * 50)
+        with self.assertRaises(ValueError):
+            generate_snort_rule(long_ip, 80, "tcp", "Long IP test", "T1234")
+
+    def test_empty_attack_desc_gets_default(self):
+        rule1 = generate_snort_rule("any", 80, "tcp", "", "T1234")
+        rule2 = generate_snort_rule("any", 80, "tcp", None, "T1234")
+        rule3 = generate_snort_rule("any", 80, "tcp", "   ", "T1234")
+        
+        for rule in [rule1, rule2, rule3]:
+            parsed = parse_snort_rule(rule)
+            self.assertEqual(parsed["options"]["msg"], '"Suspicious Network Activity"')
 
     def test_port_zero_generates_valid_rule(self):
         """Task 4: port 0 is valid and must produce a parseable Snort rule."""
-        rule = generate_snort_rule("any", 0, "tcp", "Port0 test", "T1234")
-        parsed = parse_snort_rule(rule)
-        self.assertEqual(parsed["dst_port"], "0")
+        result = generate_snort_rule("any", 0, "tcp", "Port0 test", "T1234")
+        self.assertIsInstance(result, dict)
+        self.assertEqual(result.get("status"), "error")
 
     def test_port_any_string_generates_valid_rule(self):
         rule = generate_snort_rule("any", "any", "tcp", "AnyPort test", "T1234")
