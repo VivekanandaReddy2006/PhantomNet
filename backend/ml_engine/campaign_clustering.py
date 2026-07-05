@@ -40,7 +40,7 @@ class CampaignClusterer:
         logger.info("Extracting attack groups from last %d hours.", hours_back)
         db: Session = SessionLocal()
         try:
-            cutoff = datetime.now() - timedelta(hours=hours_back)
+            cutoff = datetime.utcnow() - timedelta(hours=hours_back)
 
             # Target elevated threat classifications representing malicious actions
             logs = (

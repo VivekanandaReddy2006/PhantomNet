@@ -137,9 +137,9 @@ async def lifespan(_app: FastAPI):
         _sentinel_enabled = os.getenv("SENTINEL_ENABLED", "false").lower() == "true"
         if _sentinel_enabled:
             asyncio.create_task(sentinel_generation_loop())
-            print("✅ Sentinel Generation Loop started (SENTINEL_ENABLED=true)")
+            print("[OK] Sentinel Generation Loop started (SENTINEL_ENABLED=true)")
         else:
-            print("⏸️  Sentinel Generation Loop disabled (SENTINEL_ENABLED=false)")
+            print("[--] Sentinel Generation Loop disabled (SENTINEL_ENABLED=false)")
 
         # Seed default admin
         _db = SessionLocal()
@@ -418,7 +418,7 @@ async def broadcast_event_stream() -> None:
     Identifies new PacketLog entries and pushes them via WebSockets.
     """
 
-    print("🚀 Event Stream Broadcaster Started")
+    print("[+] Event Stream Broadcaster Started")
     last_id = 0
     while True:
         try:
