@@ -245,11 +245,12 @@ class SentinelService:
                 continue
             service = _PORT_SERVICE_MAP.get(port_int)
             if service:
-                logger.debug("Port %d ΓåÆ service %s", port_int, service)
+                logger.debug("Port %d -> service %s", port_int, service)
                 return service
 
         logger.warning(
-            "No recognised service for ports %s ΓÇö defaulting to UNKNOWN",
+            "No recognised service for ports %s - defaulting to UNKNOWN",
+
             target_ports,
         )
         return "UNKNOWN"
@@ -354,7 +355,8 @@ class SentinelService:
             )
             return ioc_rows
         except Exception as exc:
-            logger.warning("IOC query failed: %s ΓÇö continuing without IOC enrichment", exc)
+            logger.warning("IOC query failed: %s - continuing without IOC enrichment", exc)
+
             return []
 
     # ------------------------------------------------------------------
@@ -402,7 +404,8 @@ class SentinelService:
                 .all()
             )
         except Exception as exc:
-            logger.warning("Events query failed: %s ΓÇö using default signature", exc)
+            logger.warning("Events query failed: %s - using default signature", exc)
+
             default_sig = _SERVICE_DEFAULT_SIGNATURE.get(service_type)
             return [default_sig] if default_sig else []
 
@@ -537,8 +540,9 @@ class SentinelService:
             The object carries a ``result_dict`` attribute with all
             generated artefacts for convenience.
         """
-        logger.info("ΓòÉ" * 60)
-        logger.info("SentinelService.generate_playbook() ΓÇö START")
+        logger.info("=" * 60)
+        logger.info("SentinelService.generate_playbook() - START")
+
         logger.info("Campaign data keys: %s", list(campaign_data.keys()))
 
         # ΓöÇΓöÇ Extract campaign fields ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -569,21 +573,23 @@ class SentinelService:
 
         # ΓöÇΓöÇ Step 1: Infer service from target_ports ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         service_type = self._infer_service(normalised_ports)
-        logger.info("Step 1 ΓÇö Inferred service: %s (from ports %s)", service_type, normalised_ports)
+        logger.info("Step 1 - Inferred service: %s (from ports %s)", service_type, normalised_ports)
+
 
         # ΓöÇΓöÇ Step 2: Query PacketLog ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         matched_logs = self._query_packet_logs(source_ips, normalised_ports, time_range)
         threat_score = self._avg_threat_score(matched_logs)
-        logger.info("Step 2 ΓÇö Matched %d PacketLog rows, avg threat_score=%.2f", len(matched_logs), threat_score)
+        logger.info("Step 2 - Matched %d PacketLog rows, avg threat_score=%.2f", len(matched_logs), threat_score)
+
 
         # ΓöÇΓöÇ Step 2b: Query IOC table for enrichment ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         ioc_rows = self._query_iocs(source_ips)
         ioc_threat_level = self._max_ioc_threat_level(ioc_rows)
         if ioc_threat_level:
-            logger.info("Step 2b ΓÇö IOC enrichment: %d IOCs, max threat_level=%s",
+            logger.info("Step 2b - IOC enrichment: %d IOCs, max threat_level=%s",
                         len(ioc_rows), ioc_threat_level)
         else:
-            logger.info("Step 2b ΓÇö No IOC matches found for source IPs")
+            logger.info("Step 2b - No IOC matches found for source IPs")
 
         # ── Step 2c: Calculate confidence score ───────────────────────────
         ml_scores = self._collect_ml_scores(matched_logs)
@@ -599,7 +605,7 @@ class SentinelService:
         confidence_score = confidence_result.confidence
         confidence_severity = confidence_result.severity
         logger.info(
-            "Step 2c — Confidence score: %.4f  severity=%s  "
+            "Step 2c - Confidence score: %.4f  severity=%s  "
             "(css=%.3f mlas=%.3f iod=%.3f mpb=%.1f)",
             confidence_score, confidence_severity,
             confidence_result.cluster_size_score,
@@ -610,7 +616,8 @@ class SentinelService:
 
         # ── Step 3: Run SignatureEngine on events ─────────────────────────
         signature_names = self._run_signature_analysis(source_ips, service_type)
-        logger.info("Step 3 ΓÇö Detected signatures: %s", signature_names)
+        logger.info("Step 3 - Detected signatures: %s", signature_names)
+
 
         # ΓöÇΓöÇ Step 4: Map signatures ΓåÆ MITRE ATT&CK ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         techniques = map_signatures(signature_names)
@@ -639,7 +646,8 @@ class SentinelService:
                 signature_names = ["UNKNOWN"]
 
         attack_type = signature_names[0] if signature_names else "UNKNOWN"
-        logger.info("Step 4 ΓÇö Primary technique: %s (%s)",
+        logger.info("Step 4 - Primary technique: %s (%s)",
+
                      primary_technique.get("technique_id"), primary_technique.get("technique_name"))
 
         # ΓöÇΓöÇ Step 5: Generate Snort/Sigma rules ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -649,7 +657,8 @@ class SentinelService:
         )
         snort_rule = rules_result.get("snort_rules", "")
         sigma_rule = rules_result.get("sigma_rules", "")
-        logger.info("Step 5 ΓÇö Generated %d Snort + %d Sigma rules",
+        logger.info("Step 5 - Generated %d Snort + %d Sigma rules",
+
                      rules_result["metadata"]["snort_rule_count"],
                      rules_result["metadata"]["sigma_rule_count"])
 
@@ -678,7 +687,8 @@ class SentinelService:
             tlp_level=tlp,
         )
         stix_json = bundle_to_json(stix_bundle, pretty=True)
-        logger.info("Step 6 ΓÇö STIX bundle: %d objects, tlp=%s", len(stix_bundle.objects), tlp)
+        logger.info("Step 6 - STIX bundle: %d objects, tlp=%s", len(stix_bundle.objects), tlp)
+
 
         # ΓöÇΓöÇ Step 7: Render playbook ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         playbook_name = f"{service_type} {primary_technique.get('technique_name', 'Response')} Playbook"
@@ -713,10 +723,11 @@ class SentinelService:
                 }
                 playbook_content = self.playbook_gen.generate(context)
                 template_name = self.playbook_gen._select_template(attack_pattern)
-                logger.info("Step 7 ΓÇö Playbook rendered: %d chars, template=%s",
+                logger.info("Step 7 - Playbook rendered: %d chars, template=%s",
                             len(playbook_content), template_name)
             except Exception as exc:
-                logger.warning("Playbook rendering failed: %s ΓÇö using placeholder", exc)
+                logger.warning("Playbook rendering failed: %s - using placeholder", exc)
+
                 playbook_content = (
                     f"# {playbook_name}\n\n"
                     f"Campaign: {campaign_id}\n"
@@ -754,8 +765,9 @@ class SentinelService:
             technique_name=primary_technique.get("technique_name"),
             tactic=primary_technique.get("tactic"),
             mitre_url=primary_technique.get("url"),
-            snort_rule=snort_rule[:4000] if snort_rule else None,
-            sigma_rule=sigma_rule[:4000] if sigma_rule else None,
+            snort_rule=snort_rule if snort_rule else None,
+            sigma_rule=sigma_rule if sigma_rule else None,
+
             playbook_name=playbook_name,
             playbook_content=playbook_content,
             template_name=template_name,
@@ -766,7 +778,8 @@ class SentinelService:
             self.db.add(playbook_record)
             self.db.commit()
             self.db.refresh(playbook_record)
-            logger.info("Step 8 ΓÇö SentinelPlaybook persisted: id=%d, playbook_id=%s",
+            logger.info("Step 8 - SentinelPlaybook persisted: id=%d, playbook_id=%s",
+
                         playbook_record.id, playbook_id)
         except Exception as exc:
             self.db.rollback()
@@ -775,10 +788,11 @@ class SentinelService:
 
         # ΓöÇΓöÇ Step 9: Store detected_signatures in PacketLog ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         sigs_stored = self._store_signatures(matched_logs, signature_names)
-        logger.info("Step 9 ΓÇö Stored signatures on %d PacketLog rows", sigs_stored)
+        logger.info("Step 9 - Stored signatures on %d PacketLog rows", sigs_stored)
 
-        logger.info("SentinelService.generate_playbook() ΓÇö COMPLETE")
-        logger.info("ΓòÉ" * 60)
+        logger.info("SentinelService.generate_playbook() - COMPLETE")
+        logger.info("=" * 60)
+
 
         # ΓöÇΓöÇ Attach result_dict for convenience ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         playbook_record.result_dict = {
