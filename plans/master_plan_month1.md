@@ -196,12 +196,13 @@ Before writing any new code, verify the foundation is stable:
 
 ### Day 16 (Monday)
 
-| Dev | Task |
-|---|---|
-| **S** | Fix P0 bugs from Week 3 integration test |
-| **V** | Fix any rule generation bugs found in testing |
-| **K** | Fix any playbook generation/template bugs |
-| **M** | Fix any UI bugs — layout, responsiveness, data display |
+| Dev | Task / Bug ID | Target / Bug Description | Priority |
+|---|---|---|---|
+| **S** | **BUG-001** | Resolve SQLite Database Concurrency Lock (migrate to Postgres or enable SQLite WAL mode) | **P0** (Blocks Load Testing) |
+| **V** | **BUG-003** | Resolve Windows console/shell UTF-8 codec encoding crashes | **P1** |
+| **K** | **BUG-002** | Formally audit all timestamp fields/comparisons for timezone-naive UTC correctness | **P1** |
+| **M** | **BUG-004** | Optimize detail playbook viewer rendering lag (pre-render MD or lazy-load tabs) | **P2** |
+
 
 ### Day 17 (Tuesday)
 
