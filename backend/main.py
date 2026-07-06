@@ -1,7 +1,21 @@
 # =========================
 # CORE IMPORTS (Reloaded)
 # =========================
+import sys
 import os
+import importlib.util as _ilu
+
+# Apply console encoding wrapper for Windows compatibility.
+# Use importlib to load from the local logging/ folder without shadowing
+# Python's built-in logging module.
+_cw_path = os.path.join(os.path.dirname(__file__), "logging", "console_wrapper.py")
+_cw_spec = _ilu.spec_from_file_location("phantomnet_console_wrapper", os.path.abspath(_cw_path))
+_cw_mod = _ilu.module_from_spec(_cw_spec)
+_cw_spec.loader.exec_module(_cw_mod)
+_cw_mod.apply_console_wrapper()
+del _ilu, _cw_path, _cw_spec, _cw_mod
+
+
 import json
 import contextlib
 import socket
@@ -267,7 +281,7 @@ async def broadcast_event_stream() -> None:
     Identifies new PacketLog entries and pushes them via WebSockets.
     """
 
-    print("🚀 Event Stream Broadcaster Started")
+    print("[+] Event Stream Broadcaster Started")
     last_id = 0
     while True:
         try:
