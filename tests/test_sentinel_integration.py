@@ -221,7 +221,7 @@ def test_full_pipeline_ingest_cluster_generate(db_session):
     # 4. Verify DB persistence and field validity
     db_record = db_session.query(SentinelPlaybook).filter_by(id=playbook.id).first()
     assert db_record is not None
-    assert db_record.src_ip in attacker_ips
+    assert db_record.src_ip == primary_attacker_ip
     assert db_record.dst_port == 2222
     assert db_record.status == "pending"
     assert db_record.technique_id == "T1110.001"  # Brute Force mapping
