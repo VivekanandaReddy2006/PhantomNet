@@ -1198,10 +1198,218 @@ body[data-theme="light"] .pbv-task-item:hover .checkbox-icon.unchecked-icon {
     100% { opacity: 0; transform: translateX(100%); }
 }
 
+
 /* Hide the default remark-gfm checkbox input */
 .pbv-task-item input[type="checkbox"] {
     display: none;
 }
+
+
+/* ═══════════════════════════════════════════
+   MARKDOWN SKELETON LOADER
+   ═══════════════════════════════════════════
+   Mimics playbook layout during lazy-load parse
+   to eliminate visible layout shift on modal open.
+   ═══════════════════════════════════════════ */
+.pbv-markdown-skeleton {
+    padding: 0.5rem 0;
+    animation: pbvSkeletonFadeIn 0.3s ease-out;
+}
+
+@keyframes pbvSkeletonFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* Shimmer animation */
+@keyframes pbvSkeletonShimmer {
+    0% {
+        background-position: -400px 0;
+    }
+    100% {
+        background-position: 400px 0;
+    }
+}
+
+.pbv-skel-line {
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.06) 0%,
+        rgba(139, 92, 246, 0.12) 40%,
+        rgba(139, 92, 246, 0.06) 80%
+    );
+    background-size: 400px 100%;
+    animation: pbvSkeletonShimmer 1.8s ease-in-out infinite;
+}
+
+body[data-theme="light"] .pbv-skel-line {
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.04) 0%,
+        rgba(139, 92, 246, 0.1) 40%,
+        rgba(139, 92, 246, 0.04) 80%
+    );
+    background-size: 400px 100%;
+}
+
+/* Heading skeletons */
+.pbv-skel-h1 {
+    height: 22px;
+    width: 55%;
+    margin-bottom: 0.75rem;
+}
+
+.pbv-skel-h2 {
+    height: 16px;
+    width: 40%;
+    margin: 1.5rem 0 0.75rem;
+}
+
+/* Text line skeletons */
+.pbv-skel-text {
+    height: 12px;
+    margin: 0.45rem 0;
+}
+
+.pbv-skel-w100 { width: 100%; }
+.pbv-skel-w95  { width: 95%;  }
+.pbv-skel-w90  { width: 90%;  }
+.pbv-skel-w85  { width: 85%;  }
+.pbv-skel-w80  { width: 80%;  }
+.pbv-skel-w70  { width: 70%;  }
+
+/* Divider skeleton */
+.pbv-skel-divider {
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(139, 92, 246, 0.12),
+        transparent
+    );
+    margin: 0.5rem 0 1rem;
+}
+
+/* Spacer between skeleton sections */
+.pbv-skel-spacer {
+    height: 1rem;
+}
+
+/* Table skeleton */
+.pbv-skel-table {
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    margin: 0.75rem 0;
+}
+
+body[data-theme="light"] .pbv-skel-table {
+    border-color: rgba(0, 0, 0, 0.04);
+}
+
+.pbv-skel-table-row {
+    display: flex;
+    gap: 1px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+body[data-theme="light"] .pbv-skel-table-row {
+    border-bottom-color: rgba(0, 0, 0, 0.03);
+}
+
+.pbv-skel-table-row:last-child {
+    border-bottom: none;
+}
+
+.pbv-skel-table-header {
+    background: rgba(139, 92, 246, 0.04);
+}
+
+.pbv-skel-table-cell {
+    flex: 1;
+    height: 14px;
+    margin: 0.55rem 0.75rem;
+    border-radius: 4px;
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.05) 0%,
+        rgba(139, 92, 246, 0.1) 40%,
+        rgba(139, 92, 246, 0.05) 80%
+    );
+    background-size: 400px 100%;
+    animation: pbvSkeletonShimmer 1.8s ease-in-out infinite;
+}
+
+body[data-theme="light"] .pbv-skel-table-cell {
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.03) 0%,
+        rgba(139, 92, 246, 0.08) 40%,
+        rgba(139, 92, 246, 0.03) 80%
+    );
+    background-size: 400px 100%;
+}
+
+.pbv-skel-table-header .pbv-skel-table-cell {
+    height: 10px;
+}
+
+/* Checklist skeleton */
+.pbv-skel-checklist-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.75rem;
+    margin: 0.35rem 0;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    background: rgba(15, 23, 42, 0.15);
+}
+
+body[data-theme="light"] .pbv-skel-checklist-item {
+    background: rgba(248, 250, 252, 0.5);
+    border-color: rgba(0, 0, 0, 0.03);
+}
+
+.pbv-skel-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.06) 0%,
+        rgba(139, 92, 246, 0.12) 40%,
+        rgba(139, 92, 246, 0.06) 80%
+    );
+    background-size: 400px 100%;
+    animation: pbvSkeletonShimmer 1.8s ease-in-out infinite;
+}
+
+body[data-theme="light"] .pbv-skel-checkbox {
+    background: linear-gradient(
+        90deg,
+        rgba(139, 92, 246, 0.04) 0%,
+        rgba(139, 92, 246, 0.1) 40%,
+        rgba(139, 92, 246, 0.04) 80%
+    );
+    background-size: 400px 100%;
+}
+
+/* Stagger shimmer animation on skeleton rows for visual interest */
+.pbv-skel-checklist-item:nth-child(2) .pbv-skel-line,
+.pbv-skel-checklist-item:nth-child(2) .pbv-skel-checkbox { animation-delay: 0.1s; }
+.pbv-skel-checklist-item:nth-child(3) .pbv-skel-line,
+.pbv-skel-checklist-item:nth-child(3) .pbv-skel-checkbox { animation-delay: 0.2s; }
+.pbv-skel-checklist-item:nth-child(4) .pbv-skel-line,
+.pbv-skel-checklist-item:nth-child(4) .pbv-skel-checkbox { animation-delay: 0.3s; }
+.pbv-skel-checklist-item:nth-child(5) .pbv-skel-line,
+.pbv-skel-checklist-item:nth-child(5) .pbv-skel-checkbox { animation-delay: 0.4s; }
+
+.pbv-skel-table-row:nth-child(2) .pbv-skel-table-cell { animation-delay: 0.1s; }
+.pbv-skel-table-row:nth-child(3) .pbv-skel-table-cell { animation-delay: 0.2s; }
+.pbv-skel-table-row:nth-child(4) .pbv-skel-table-cell { animation-delay: 0.3s; }
 
 
 /* ─── Rule Code Embed (Snort / Sigma tabs) ─── */
@@ -1354,4 +1562,109 @@ body[data-theme="light"] .pbv-footer {
         height: 28px;
         font-size: 0.7rem;
     }
+
+    .pbv-download-bar {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .pbv-download-btn-label {
+        display: none;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Download Bar — Format-specific Export Buttons
+   ═══════════════════════════════════════════════════════════════ */
+
+.pbv-download-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1.25rem;
+    background: rgba(15, 23, 42, 0.4);
+    border-bottom: 1px solid rgba(139, 92, 246, 0.06);
+}
+
+body[data-theme="light"] .pbv-download-bar {
+    background: rgba(241, 245, 249, 0.6);
+    border-bottom-color: rgba(139, 92, 246, 0.08);
+}
+
+.pbv-download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    background: rgba(139, 92, 246, 0.06);
+    color: #94a3b8;
+    border: 1px solid rgba(139, 92, 246, 0.1);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.pbv-download-btn:hover:not(:disabled) {
+    color: #a78bfa;
+    background: rgba(139, 92, 246, 0.15);
+    border-color: rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
+    transform: translateY(-1px);
+}
+
+.pbv-download-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.pbv-download-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+body[data-theme="light"] .pbv-download-btn {
+    background: rgba(139, 92, 246, 0.04);
+    color: #64748b;
+    border-color: rgba(139, 92, 246, 0.08);
+}
+
+body[data-theme="light"] .pbv-download-btn:hover:not(:disabled) {
+    color: #7c3aed;
+    background: rgba(139, 92, 246, 0.1);
+    border-color: rgba(139, 92, 246, 0.2);
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+}
+
+.pbv-download-btn-icon {
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
+.pbv-download-btn:hover:not(:disabled) .pbv-download-btn-icon {
+    opacity: 1;
+}
+
+.pbv-download-btn-label {
+    font-weight: 700;
+}
+
+.pbv-download-btn-ext {
+    font-size: 0.55rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 0.1rem 0.35rem;
+    background: rgba(139, 92, 246, 0.08);
+    border-radius: 3px;
+    color: #8b5cf6;
+    letter-spacing: 0.06em;
+}
+
+body[data-theme="light"] .pbv-download-btn-ext {
+    background: rgba(139, 92, 246, 0.06);
+    color: #7c3aed;
 }

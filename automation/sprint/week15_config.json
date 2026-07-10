@@ -1,0 +1,474 @@
+{
+    "_comment": "PhantomNet Sprint Config — Week 15 (Month 1 Week 3: Polish & Hardening, Days 11-15)",
+
+    "week": 15,
+
+    "milestone_title": "Month 4 – Sentinel Core (Weeks 13–16)",
+    "milestone_description": "Core Sentinel Layer: ATT&CK mapping, Snort/Sigma rules, Jinja2 playbooks, enhanced STIX, SentinelPlaybook DB, Sentinel Dashboard with approve/reject/export.",
+
+    "month_label": "month-4",
+    "extra_labels": ["sentinel"],
+
+    "labels": [
+        {"name": "week-15", "color": "0E8A16", "description": "Week 15 tasks — Polish & Hardening"},
+        {"name": "sentinel", "color": "5319E7", "description": "Sentinel Layer tasks"}
+    ],
+
+    "day_map": {
+        "1": "Mon (Jun 29)",
+        "2": "Tue (Jun 30)",
+        "3": "Wed (Jul 1)",
+        "4": "Thu (Jul 2)",
+        "5": "Fri (Jul 3)"
+    },
+
+    "tasks": [
+        {
+            "Day": 1,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Testing",
+            "Title": "End-to-End Test #1 — SSH Brute Force Scenario",
+            "Objective": "Manually insert test PacketLogs simulating SSH brute force and verify sentinel generates correct T1110.001 playbook with all expected fields.",
+            "Tasks": [
+                "Insert test PacketLogs simulating SSH brute force traffic (port 2222, repeated auth failures)",
+                "Trigger sentinel pipeline to process the injected data",
+                "Verify sentinel generates a playbook with MITRE technique T1110.001 (Brute Force: Password Guessing)",
+                "Validate Snort rule contains correct msg, flow, threshold, and classtype for SSH brute force",
+                "Validate Sigma rule has correct logsource and detection block for SSH auth failures",
+                "Verify STIX bundle contains correct ExternalReferences to ATT&CK T1110.001",
+                "Verify playbook Markdown renders all 7 sections (Header, Summary, IOC Table, ATT&CK Mapping, Containment Steps, Artifacts, metadata)",
+                "Document the test scenario and expected output in test report"
+            ],
+            "Deliverables": [
+                "Documented SSH brute force test scenario with expected vs actual output",
+                "Verified T1110.001 playbook generation — all sections correct",
+                "Test evidence screenshots/logs saved to docs/"
+            ],
+            "Estimate": 6,
+            "Warnings": [
+                "**Do NOT** modify existing sentinel_service.py logic — this is validation only.",
+                "Use realistic test data that mimics actual honeypot SSH traffic patterns."
+            ]
+        },
+        {
+            "Day": 1,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "End-to-End Test #2 — SQL Injection Scenario",
+            "Objective": "Insert HTTP PacketLogs with SQLi payloads and verify T1190 playbook + Snort rule are generated correctly.",
+            "Tasks": [
+                "Insert test PacketLogs with SQL injection payloads (port 8080, HTTP requests with SQLi patterns)",
+                "Trigger sentinel pipeline to process the injected SQLi traffic",
+                "Verify playbook maps to MITRE technique T1190 (Exploit Public-Facing Application)",
+                "Verify Snort rule has correct msg and classtype for SQL injection",
+                "Validate Sigma rule detection logic for HTTP SQLi patterns",
+                "Verify playbook uses sqli_attempt.md.j2 template with correct containment steps (WAF review, input validation audit, DB integrity check)",
+                "Document test results with evidence"
+            ],
+            "Deliverables": [
+                "Documented SQLi test scenario with expected vs actual output",
+                "Verified T1190 playbook + Snort rule correctness",
+                "Test evidence saved to docs/"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 1,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "End-to-End Test #3 — Port Scan Scenario",
+            "Objective": "Insert multi-port PacketLogs simulating port scanning and verify T1046 playbook is generated with correct Sigma detection logic.",
+            "Tasks": [
+                "Insert test PacketLogs simulating port scanning (multiple destination ports from single source IP)",
+                "Trigger sentinel pipeline to process the injected port scan traffic",
+                "Verify playbook maps to MITRE technique T1046 (Network Service Discovery)",
+                "Verify Sigma rule has correct detection logic for port scan patterns",
+                "Verify playbook uses port_scan.md.j2 template with correct containment steps (network segmentation review, exposed service audit)",
+                "Validate STIX bundle correctness for T1046",
+                "Document test results with evidence"
+            ],
+            "Deliverables": [
+                "Documented port scan test scenario with expected vs actual output",
+                "Verified T1046 playbook + Sigma rule correctness",
+                "Test evidence saved to docs/"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 1,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "UI Polish — Loading States, Error Handling, Empty States",
+            "Objective": "Add spinners during API calls, error toasts on failure, and empty state display when no playbooks exist. Follow existing dashboard patterns.",
+            "Tasks": [
+                "Add loading spinner/skeleton to SentinelDashboard during playbook list fetch",
+                "Add error toast/notification component on API call failures",
+                "Add empty state display when no playbooks exist (icon + message + CTA)",
+                "Add loading state to PlaybookViewer when fetching playbook details",
+                "Add loading state to ApprovalControls during approve/reject API calls",
+                "Ensure error handling follows existing dashboard patterns (MetricCard, ThreatFeed, etc.)",
+                "Test all loading/error/empty states manually"
+            ],
+            "Deliverables": [
+                "Updated SentinelDashboard.jsx with loading states",
+                "Error toast/notification component integrated",
+                "Empty state component for no playbooks scenario",
+                "All Sentinel components have proper loading/error handling"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "Fix Pipeline Bugs from Day 11 E2E Tests",
+            "Objective": "Fix all pipeline bugs discovered during Day 11 end-to-end tests. Prioritize: data flow issues, missing fields, DB save failures. All 3 scenarios must produce correct output.",
+            "Tasks": [
+                "Triage all bugs found during Day 11 SSH brute force, SQLi, and port scan tests",
+                "Fix data flow issues — ensure campaign cluster data correctly flows to sentinel_service",
+                "Fix missing fields — ensure all 21 SentinelPlaybook columns are populated",
+                "Fix DB save failures — ensure SentinelPlaybook records persist correctly",
+                "Re-run all 3 E2E test scenarios and verify correct output",
+                "Document all fixes applied with before/after evidence"
+            ],
+            "Deliverables": [
+                "All 3 E2E scenarios (SSH brute force, SQLi, port scan) produce correct output",
+                "Bug fix documentation with before/after evidence",
+                "Updated sentinel_service.py or related files as needed"
+            ],
+            "Estimate": 8,
+            "Warnings": [
+                "**Priority order**: P0 (blocks demo) → P1 (wrong output) → P2 (cosmetic).",
+                "Do NOT add new features — this is bug-fix only."
+            ]
+        },
+        {
+            "Day": 2,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Validate Snort Rule Syntax Correctness",
+            "Objective": "Validate all generated Snort rules follow Snort 2.9/3.0 syntax correctly. Manual review or parser-based validation.",
+            "Tasks": [
+                "Collect all Snort rules generated by the sentinel pipeline",
+                "Verify correct semicolon placement in rule options",
+                "Verify correct parentheses usage in rule body",
+                "Verify proper escape characters in msg and content fields",
+                "Verify SID uniqueness across all generated rules",
+                "Verify classtype values match Snort standard classtypes",
+                "Verify ATT&CK reference URLs are correctly formatted",
+                "Document any syntax issues found and fix in rule_generator.py"
+            ],
+            "Deliverables": [
+                "Snort rule syntax validation report",
+                "All rules follow Snort 2.9/3.0 syntax correctly",
+                "Fixes applied to rule_generator.py if needed"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "Validate Sigma Rules with YAML Parser",
+            "Objective": "Validate all generated Sigma rules are valid YAML with correct Sigma schema. Verify logsource structure, detection block, and tag format.",
+            "Tasks": [
+                "Collect all Sigma rules generated by the sentinel pipeline",
+                "Parse each rule with a YAML parser to verify valid YAML syntax",
+                "Verify logsource structure has correct category/product/service fields",
+                "Verify detection block follows Sigma schema (selection, condition)",
+                "Verify tags follow ATT&CK format (attack.t1110, attack.credential_access, etc.)",
+                "Verify level field matches severity (critical/high/medium/low)",
+                "Document any schema issues found and fix in rule_generator.py"
+            ],
+            "Deliverables": [
+                "Sigma rule schema validation report",
+                "All rules are valid YAML with correct Sigma schema",
+                "Fixes applied to rule_generator.py if needed"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Add Download Buttons for Snort/Sigma/STIX/Markdown Files",
+            "Objective": "Add download buttons in PlaybookViewer for each export format. Each format downloads as the correct file extension (.rules, .yml, .json, .md).",
+            "Tasks": [
+                "Add 'Download Snort Rules' button — downloads as .rules file",
+                "Add 'Download Sigma Rules' button — downloads as .yml file",
+                "Add 'Download STIX Bundle' button — downloads as .json file",
+                "Add 'Download Playbook' button — downloads as .md file",
+                "Use Blob + URL.createObjectURL pattern for client-side downloads",
+                "Style download buttons with consistent icon + label design",
+                "Test each download format produces valid file content"
+            ],
+            "Deliverables": [
+                "Download buttons added to PlaybookViewer for all 4 formats",
+                "Each format downloads with correct file extension",
+                "Blob-based download implementation"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 3,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "Add Pagination to Sentinel Playbooks API",
+            "Objective": "Add pagination support to GET /api/sentinel/playbooks with page and per_page query params. Return paginated response with total count.",
+            "Tasks": [
+                "Add ?page=1&per_page=20 query parameter support to GET /api/sentinel/playbooks",
+                "Calculate total count, page offset, and per_page limit in DB query",
+                "Return paginated response: { total, page, per_page, playbooks[] }",
+                "Add validation for page (>= 1) and per_page (1-100) params",
+                "Default to page=1, per_page=20 when not specified",
+                "Update existing API tests to verify pagination works",
+                "Test with various page sizes and edge cases (empty results, last page)"
+            ],
+            "Deliverables": [
+                "GET /api/sentinel/playbooks supports ?page=&per_page= params",
+                "Paginated response format: { total, page, per_page, playbooks[] }",
+                "Updated API tests"
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "Add Severity-Based Snort Rule Priority Mapping",
+            "Objective": "Map playbook severity levels to Snort rule priority values. CRITICAL → priority:1, HIGH → priority:2, MEDIUM → priority:3.",
+            "Tasks": [
+                "Add severity-to-priority mapping in rule_generator.py",
+                "Map CRITICAL severity → Snort priority:1",
+                "Map HIGH severity → Snort priority:2",
+                "Map MEDIUM severity → Snort priority:3",
+                "Map LOW severity → Snort priority:4 (informational)",
+                "Map severity to appropriate Snort classtype values",
+                "Update existing Snort rule generation tests for new priority logic",
+                "Verify generated rules have correct priority for each severity level"
+            ],
+            "Deliverables": [
+                "Severity-to-priority mapping in rule_generator.py",
+                "Updated Snort rules include correct priority based on severity",
+                "Updated tests verifying priority mapping"
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Add Timestamp and Event Count to Playbook Context",
+            "Objective": "Enrich playbook context with time range and event count from campaign cluster data. Display as '147 events detected between 08:15 and 08:47 UTC'.",
+            "Tasks": [
+                "Extract time range (first_seen, last_seen) from campaign cluster data",
+                "Extract event count from campaign cluster data",
+                "Add time_range and event_count to playbook template context",
+                "Update Jinja2 templates to display formatted time range and event count",
+                "Format display as 'N events detected between HH:MM and HH:MM UTC'",
+                "Update all 4 attack-pattern templates (brute_force, sqli, port_scan, data_exfiltration)",
+                "Test rendering with various time ranges and event counts"
+            ],
+            "Deliverables": [
+                "Playbook templates show time range and event count from cluster data",
+                "Formatted display: 'N events detected between HH:MM and HH:MM UTC'",
+                "All 4 templates updated"
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Add Sorting to Playbook List — Date, Severity, Status",
+            "Objective": "Add column header click-to-sort functionality on the playbook list. Support sorting by date, severity, and status. Default: newest first.",
+            "Tasks": [
+                "Add clickable sort headers to playbook list (Date, Severity, Status columns)",
+                "Implement client-side sort for date (newest first default)",
+                "Implement client-side sort for severity (CRITICAL → HIGH → MEDIUM → LOW)",
+                "Implement client-side sort for status (Draft → Approved → Rejected)",
+                "Add sort direction indicator (▲/▼ arrow) on active column",
+                "Toggle ascending/descending on repeated clicks",
+                "Persist default sort (newest first) on initial load"
+            ],
+            "Deliverables": [
+                "Sortable column headers on playbook list",
+                "Client-side sorting by date, severity, status",
+                "Sort direction indicators (▲/▼)"
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 4,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Review",
+            "Title": "Code Review All Sentinel Files for Consistency",
+            "Objective": "Review all sentinel/ files for consistency. Ensure every function has docstrings, type hints, error handling, and logging.",
+            "Tasks": [
+                "Review sentinel/mitre_mapper.py — verify docstrings, type hints, logger calls",
+                "Review sentinel/rule_generator.py — verify docstrings, type hints, error handling",
+                "Review sentinel/playbook_generator.py — verify docstrings, type hints, logger calls",
+                "Review sentinel/stix_enhanced.py — verify docstrings, type hints, error handling",
+                "Review sentinel/sentinel_service.py — verify docstrings, type hints, logger calls on errors",
+                "Review sentinel/models.py — verify docstrings, column comments",
+                "Review api/sentinel.py — verify docstrings, error handling, response models",
+                "Fix any missing docstrings, type hints, or error handling across all files"
+            ],
+            "Deliverables": [
+                "All sentinel/ functions have docstrings",
+                "All sentinel/ functions have type hints on signatures",
+                "Logger calls on all error paths",
+                "Consistent error handling patterns across all files"
+            ],
+            "Estimate": 6,
+            "Warnings": [
+                "This is a review + fix task — apply fixes directly, don't just document issues.",
+                "Do NOT change functional behavior — consistency and documentation only."
+            ]
+        },
+        {
+            "Day": 4,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Review",
+            "Title": "Code Review Rule Generator Edge Cases",
+            "Objective": "Review and handle edge cases in rule_generator.py: IPv6 addresses, port 0, empty attack_desc, very long IPs. Add input validation.",
+            "Tasks": [
+                "Test rule generation with IPv6 addresses — handle or reject gracefully",
+                "Test rule generation with port 0 — handle or return error",
+                "Test rule generation with empty attack_desc — provide default description",
+                "Test rule generation with very long IP strings — validate max length",
+                "Add input validation function to reject invalid inputs early",
+                "Return error dict if input is invalid instead of generating malformed rules",
+                "Add unit tests for each edge case",
+                "Document edge case handling behavior"
+            ],
+            "Deliverables": [
+                "Edge case handling in rule_generator.py",
+                "Input validation function with clear error returns",
+                "Unit tests for edge cases (IPv6, port 0, empty desc, long IPs)"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 4,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Review",
+            "Title": "Code Review Playbook Templates for Completeness",
+            "Objective": "Review every .j2 template file to ensure all 7 sections are filled with no empty blocks. Manual review of each template.",
+            "Tasks": [
+                "Review base_playbook.md.j2 — verify all 7 sections (Header, Summary, IOC Table, ATT&CK Mapping, Containment Steps, Artifacts, metadata)",
+                "Review brute_force.md.j2 — verify specific containment steps (key rotation, auth log review)",
+                "Review sqli_attempt.md.j2 — verify specific steps (WAF review, input validation, DB integrity)",
+                "Review port_scan.md.j2 — verify specific steps (network segmentation, exposed service audit)",
+                "Review data_exfiltration.md.j2 — verify specific steps (DLP review, file integrity, outbound traffic)",
+                "Ensure no Jinja2 blocks render as empty when data is provided",
+                "Fix any incomplete or empty sections found",
+                "Test each template with mock data to verify rendering"
+            ],
+            "Deliverables": [
+                "All 5 Jinja2 templates reviewed and verified complete",
+                "All 7 sections render correctly with no empty blocks",
+                "Fixes applied to any incomplete templates"
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 4,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Add Notification Badge to Sentinel Nav Link",
+            "Objective": "Add a small badge/counter next to the Sentinel nav link showing the count of pending (draft) playbooks. Fetch from /api/sentinel/stats on Navbar mount.",
+            "Tasks": [
+                "Add useEffect to Navbar component to fetch /api/sentinel/stats on mount",
+                "Extract draft/pending playbook count from stats response",
+                "Display small badge/counter next to the Sentinel nav link",
+                "Style badge to be consistent with existing Navbar design",
+                "Badge should only appear when count > 0",
+                "Update badge count when navigating back to dashboard",
+                "Handle API errors gracefully (hide badge if stats unavailable)"
+            ],
+            "Deliverables": [
+                "Notification badge on Sentinel nav link showing draft count",
+                "Badge fetches from /api/sentinel/stats via useEffect",
+                "Badge hidden when count is 0 or API unavailable"
+            ],
+            "Estimate": 4,
+            "Warnings": [
+                "The Sentinel nav link was added in Week 13 Day 1. Do NOT recreate it — only add the badge.",
+                "Use the existing FaShieldAlt icon and navLinks array structure."
+            ]
+        },
+        {
+            "Day": 5,
+            "Role": "All",
+            "Assignee": "sriram21-09",
+            "Type": "Integration",
+            "Title": "Full System Integration Test — All Services",
+            "Objective": "Start all services, trigger attacks, verify full pipeline: SSH brute force → ML scores → campaign clustered → sentinel playbook generated → visible on dashboard → approve → export.",
+            "Tasks": [
+                "Start backend (uvicorn), frontend (npm run dev), and honeypots",
+                "Trigger SSH brute force attack simulation against honeypot",
+                "Verify ML threat analyzer scores the traffic",
+                "Verify campaign clustering groups the attack events",
+                "Verify sentinel generates a playbook with correct ATT&CK mapping",
+                "Verify playbook is visible on Sentinel Dashboard",
+                "Verify approve/reject buttons work on the playbook",
+                "Verify export downloads correct file formats (Snort, Sigma, STIX, Markdown)",
+                "Document the full pipeline run with timestamps and evidence"
+            ],
+            "Deliverables": [
+                "Full pipeline integration test documented with evidence",
+                "All services verified working together end-to-end",
+                "Test evidence: screenshots, logs, exported files"
+            ],
+            "Estimate": 8,
+            "Warnings": [
+                "This is a TEAM task — coordinate with all developers.",
+                "All Week 15 Day 1-4 fixes must be merged before running this test."
+            ]
+        },
+        {
+            "Day": 5,
+            "Role": "All",
+            "Assignee": "sriram21-09",
+            "Type": "Documentation",
+            "Title": "Document Remaining Bugs for Week 16",
+            "Objective": "Document any remaining bugs found during Week 15 testing. Categorize as P0 (blocks demo), P1 (wrong output), P2 (cosmetic) for Week 16 resolution.",
+            "Tasks": [
+                "Compile all bugs found during Week 15 Days 1-4 testing",
+                "Categorize bugs: P0 (blocks demo), P1 (wrong output), P2 (cosmetic)",
+                "Create a bug tracking document or GitHub issues for each bug",
+                "Include reproduction steps, expected vs actual behavior for each bug",
+                "Assign priority labels to each bug issue",
+                "Identify which bugs are blockers for Week 16 work",
+                "Create a summary list for Week 16 kickoff"
+            ],
+            "Deliverables": [
+                "Bug tracking document with all remaining issues categorized",
+                "P0/P1/P2 priority labels assigned to each bug",
+                "Summary list ready for Week 16 planning"
+            ],
+            "Estimate": 4,
+            "Warnings": [
+                "This is a TEAM task — all developers contribute bugs from their area.",
+                "P0 bugs should be escalated immediately, not deferred to Week 16."
+            ]
+        }
+    ]
+}

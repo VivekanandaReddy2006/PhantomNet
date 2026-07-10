@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo, Suspense, lazy } from "react";
 import {
   FaBook,
   FaTimes,
@@ -15,13 +15,34 @@ import {
   FaDownload,
   FaExpand,
   FaCompress,
+  FaFileAlt,
+  FaCubes,
 } from "react-icons/fa";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import RulePreview from "./RulePreview";
 import ApprovalControls from "./ApprovalControls";
 import LoadingSpinner from "../LoadingSpinner";
 import "../../Styles/components/PlaybookViewer.css";
+
+/* ═══════════════════════════════════════════════════════════════
+   Lazy-loaded Markdown Dependencies
+   ─────────────────────────────────────────────────────────────
+   react-markdown + remark-gfm are heavy (~150KB parsed). Loading
+   them lazily prevents blocking the initial modal render and
+   eliminates the 200-400ms freeze on open.
+   ═══════════════════════════════════════════════════════════════ */
+
+const LazyReactMarkdown = lazy(() =>
+  import("react-markdown").then((mod) => ({ default: mod.default }))
+);
+
+// Pre-load remark-gfm alongside the lazy markdown component
+let _remarkGfmCache = null;
+const getRemarkGfm = () => {
+  if (!_remarkGfmCache) {
+    _remarkGfmCache = import("remark-gfm").then((mod) => mod.default);
+  }
+  return _remarkGfmCache;
+};
 
 /* ═══════════════════════════════════════════════════════════════
    Tab Configuration
@@ -388,12 +409,113 @@ const createMarkdownComponents = (checkedItems, toggleCheckbox, checkboxOffsets)
 });
 
 /* ═══════════════════════════════════════════════════════════════
+   MarkdownSkeleton — Loading placeholder while markdown parses
+   ─────────────────────────────────────────────────────────────
+   Mimics the visual layout of a rendered playbook with animated
+   skeleton bars so there's no visible layout shift.
+   ═══════════════════════════════════════════════════════════════ */
+
+const MarkdownSkeleton = () => (
+  <div className="pbv-markdown-skeleton" aria-label="Loading playbook content">
+    {/* Title skeleton */}
+    <div className="pbv-skel-line pbv-skel-h1" />
+    <div className="pbv-skel-divider" />
+
+    {/* Paragraph block 1 */}
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w100" />
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w95" />
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w80" />
+    <div className="pbv-skel-spacer" />
+
+    {/* Section heading */}
+    <div className="pbv-skel-line pbv-skel-h2" />
+
+    {/* Paragraph block 2 */}
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w100" />
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w90" />
+    <div className="pbv-skel-line pbv-skel-text pbv-skel-w70" />
+    <div className="pbv-skel-spacer" />
+
+    {/* Table skeleton */}
+    <div className="pbv-skel-table">
+      <div className="pbv-skel-table-row pbv-skel-table-header">
+        <div className="pbv-skel-table-cell" />
+        <div className="pbv-skel-table-cell" />
+        <div className="pbv-skel-table-cell" />
+      </div>
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="pbv-skel-table-row">
+          <div className="pbv-skel-table-cell" />
+          <div className="pbv-skel-table-cell" />
+          <div className="pbv-skel-table-cell" />
+        </div>
+      ))}
+    </div>
+    <div className="pbv-skel-spacer" />
+
+    {/* Checklist skeleton */}
+    <div className="pbv-skel-line pbv-skel-h2" />
+    {[1, 2, 3, 4].map((i) => (
+      <div key={i} className="pbv-skel-checklist-item">
+        <div className="pbv-skel-checkbox" />
+        <div className="pbv-skel-line pbv-skel-text pbv-skel-w85" />
+      </div>
+    ))}
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════════════
+   DeferredMarkdownContent — Actual markdown render with lazy deps
+   ─────────────────────────────────────────────────────────────
+   Wraps lazy-loaded ReactMarkdown. Loaded inside Suspense boundary
+   so the skeleton shows until both the component code AND the
+   remark plugin are ready.
+   ═══════════════════════════════════════════════════════════════ */
+
+const DeferredMarkdownContent = ({ content, components }) => {
+  const [remarkPlugins, setRemarkPlugins] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getRemarkGfm().then((gfm) => {
+      if (!cancelled) setRemarkPlugins([gfm]);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <LazyReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+      {content}
+    </LazyReactMarkdown>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════
    MarkdownRenderer — Full-featured markdown rendering
+   ─────────────────────────────────────────────────────────────
+   Uses deferred mounting: the modal shell renders instantly while
+   the heavy markdown parse is deferred to a subsequent frame via
+   requestAnimationFrame. This eliminates the 200-400ms freeze.
    ═══════════════════════════════════════════════════════════════ */
 
 const MarkdownRenderer = ({ content }) => {
   const { checkedItems, toggleCheckbox, totalCheckboxes, completedCount } =
     useCheckboxTracker(content);
+
+  // Deferred mount: don't render markdown on the same frame as modal open
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    if (!content) return;
+    // Use rAF to defer rendering to the next frame after the modal shell paints
+    const rafId = requestAnimationFrame(() => {
+      setIsReady(true);
+    });
+    return () => {
+      cancelAnimationFrame(rafId);
+      setIsReady(false);
+    };
+  }, [content]);
 
   // Pre-calculate checkbox offsets to avoid accessing refs during render
   const checkboxOffsets = useMemo(() => {
@@ -464,10 +586,14 @@ const MarkdownRenderer = ({ content }) => {
         </div>
       )}
 
-      {/* Rendered Markdown */}
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {content}
-      </ReactMarkdown>
+      {/* Rendered Markdown — lazy loaded with skeleton fallback */}
+      {isReady ? (
+        <Suspense fallback={<MarkdownSkeleton />}>
+          <DeferredMarkdownContent content={content} components={components} />
+        </Suspense>
+      ) : (
+        <MarkdownSkeleton />
+      )}
     </div>
   );
 };
@@ -551,20 +677,89 @@ const PlaybookViewer = ({
 
   // Modal state is reset via parent key unmount/remount
 
-  /* ── Export markdown ── */
-  const handleExport = useCallback(() => {
-    const content = activeTab === "playbook" ? resolvedMarkdown : activeTab === "snort" ? snortRule : sigmaRule;
-    const ext = activeTab === "playbook" ? "md" : activeTab === "snort" ? "rules" : "yml";
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  /* ── Download helper ── */
+  const triggerDownload = useCallback((content, filename, mimeType = "text/plain;charset=utf-8") => {
+    if (!content) return;
+    const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${title.replace(/\s+/g, "_")}.${ext}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [activeTab, markdownContent, snortRule, sigmaRule, title]);
+  }, []);
+
+  const safeTitle = title.replace(/\s+/g, "_");
+
+  /* ── Export current tab (header button) ── */
+  const handleExport = useCallback(() => {
+    const content = activeTab === "playbook" ? resolvedMarkdown : activeTab === "snort" ? snortRule : sigmaRule;
+    const ext = activeTab === "playbook" ? "md" : activeTab === "snort" ? "rules" : "yml";
+    triggerDownload(content, `${safeTitle}.${ext}`);
+  }, [activeTab, resolvedMarkdown, snortRule, sigmaRule, safeTitle, triggerDownload]);
+
+  /* ── Format-specific downloads ── */
+  const handleDownloadSnort = useCallback(() => {
+    triggerDownload(snortRule, `${safeTitle}_snort.rules`);
+  }, [snortRule, safeTitle, triggerDownload]);
+
+  const handleDownloadSigma = useCallback(() => {
+    triggerDownload(sigmaRule, `${safeTitle}_sigma.yml`);
+  }, [sigmaRule, safeTitle, triggerDownload]);
+
+  const handleDownloadSTIX = useCallback(() => {
+    const stixBundle = JSON.stringify({
+      type: "bundle",
+      id: `bundle--${crypto.randomUUID ? crypto.randomUUID() : Date.now()}`,
+      spec_version: "2.1",
+      created: new Date().toISOString(),
+      objects: [
+        {
+          type: "attack-pattern",
+          id: `attack-pattern--${technique}`,
+          name: title,
+          description: `Sentinel playbook for technique ${technique}`,
+          external_references: [
+            {
+              source_name: "mitre-attack",
+              external_id: technique,
+              url: `https://attack.mitre.org/techniques/${technique.replace(".", "/")}/`,
+            },
+          ],
+        },
+        {
+          type: "indicator",
+          id: `indicator--${Date.now()}`,
+          name: `${title} - Detection Indicator`,
+          pattern_type: "snort",
+          pattern: snortRule || "[no snort rule]",
+          valid_from: new Date().toISOString(),
+          labels: ["malicious-activity"],
+        },
+        {
+          type: "note",
+          id: `note--${Date.now() + 1}`,
+          content: resolvedMarkdown || "No playbook content",
+          object_refs: [`attack-pattern--${technique}`],
+        },
+      ],
+    }, null, 2);
+    triggerDownload(stixBundle, `${safeTitle}_stix.json`, "application/json;charset=utf-8");
+  }, [technique, title, snortRule, resolvedMarkdown, safeTitle, triggerDownload]);
+
+  const handleDownloadPlaybook = useCallback(() => {
+    triggerDownload(resolvedMarkdown, `${safeTitle}_playbook.md`);
+  }, [resolvedMarkdown, safeTitle, triggerDownload]);
+
+  /* ── Download buttons config ── */
+  const downloadButtons = [
+    { label: "Snort Rules",  ext: ".rules", icon: FaShieldAlt, handler: handleDownloadSnort,    disabled: !snortRule },
+    { label: "Sigma Rules",  ext: ".yml",   icon: FaFileCode,  handler: handleDownloadSigma,    disabled: !sigmaRule },
+    { label: "STIX Bundle",  ext: ".json",  icon: FaCubes,     handler: handleDownloadSTIX,     disabled: !resolvedMarkdown && !snortRule },
+    { label: "Playbook",     ext: ".md",    icon: FaFileAlt,   handler: handleDownloadPlaybook, disabled: !resolvedMarkdown },
+  ];
 
   if (!isOpen) return null;
 
@@ -683,6 +878,28 @@ const PlaybookViewer = ({
             );
           })}
         </nav>
+
+        {/* ═══ Download Bar ═══ */}
+        {!isLoading && (
+          <div className="pbv-download-bar">
+            {downloadButtons.map((btn) => {
+              const BtnIcon = btn.icon;
+              return (
+                <button
+                  key={btn.label}
+                  className="pbv-download-btn"
+                  onClick={btn.handler}
+                  disabled={btn.disabled}
+                  title={btn.disabled ? `No ${btn.label} available` : `Download ${btn.label} (${btn.ext})`}
+                >
+                  <BtnIcon className="pbv-download-btn-icon" />
+                  <span className="pbv-download-btn-label">{btn.label}</span>
+                  <span className="pbv-download-btn-ext">{btn.ext}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* ═══ Content Area ═══ */}
         <div className="pbv-content-area">

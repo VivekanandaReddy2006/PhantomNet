@@ -1,6 +1,7 @@
 import time
 import logging
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 from .models import Base
@@ -13,6 +14,19 @@ logger = logging.getLogger("PhantomNet-DB")
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./phantomnet.db")
+
+# SQLite WAL mode registration on Engine connect event
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+    except Exception:
+        pass
+    finally:
+        cursor.close()
+
 
 
 def get_db_engine():
@@ -53,8 +67,33 @@ def get_db_engine():
     raise Exception("Database Connection Failure")
 
 
+from sqlalchemy import inspect
+
 # Create the engine globally
 engine = get_db_engine()
+
+# Dynamically upgrade DB schema if columns are missing
+def upgrade_db_schema(engine):
+    try:
+        inspector = inspect(engine)
+        if "packet_logs" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("packet_logs")]
+            with engine.begin() as conn:
+                if "anomaly_score" not in columns:
+                    conn.execute(text("ALTER TABLE packet_logs ADD COLUMN anomaly_score FLOAT DEFAULT 0.0"))
+                if "mail_from" not in columns:
+                    conn.execute(text("ALTER TABLE packet_logs ADD COLUMN mail_from VARCHAR(256)"))
+                if "rcpt_to" not in columns:
+                    conn.execute(text("ALTER TABLE packet_logs ADD COLUMN rcpt_to VARCHAR(256)"))
+                if "email_subject" not in columns:
+                    conn.execute(text("ALTER TABLE packet_logs ADD COLUMN email_subject VARCHAR(512)"))
+                if "body_len" not in columns:
+                    conn.execute(text("ALTER TABLE packet_logs ADD COLUMN body_len INTEGER"))
+    except Exception as e:
+        logger.warning(f"Schema upgrade check failed/skipped: {e}")
+
+upgrade_db_schema(engine)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
