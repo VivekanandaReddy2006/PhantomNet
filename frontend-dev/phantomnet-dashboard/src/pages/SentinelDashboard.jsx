@@ -596,6 +596,11 @@ const SentinelDashboard = () => {
 
   const [techniques, setTechniques] = useState(sampleTechniques);
 
+  /* ── Pagination State ── */
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(12);
+  const [totalCount, setTotalCount] = useState(0);
+
   /* ── Sort State ── */
   const [sortColumn, setSortColumn] = useState("date");
   const [sortDirection, setSortDirection] = useState("desc"); // newest first
@@ -603,17 +608,24 @@ const SentinelDashboard = () => {
   /* ── Toast Notifications ── */
   const { toasts, addToast, removeToast } = useToast();
 
-  const fetchData = async () => {
+  const fetchData = async (page = currentPage, pageSize = perPage, tab = activeTab) => {
     setLoading(true);
     setError(null);
     try {
       // 1. Fetch playbooks list
-      const playbooksRes = await fetch("/api/sentinel/playbooks?limit=100");
+      let backendStatus = "";
+      if (tab === "draft") backendStatus = "pending";
+      else if (tab === "approved") backendStatus = "approved";
+      else if (tab === "rejected") backendStatus = "rejected";
+
+      const url = `/api/sentinel/playbooks?page=${page}&per_page=${pageSize}${backendStatus ? `&status=${backendStatus}` : ""}`;
+      const playbooksRes = await fetch(url);
       const playbooksData = await playbooksRes.json();
       if (!playbooksRes.ok) {
         throw new Error(playbooksData.detail || "Failed to load playbooks from server");
       }
       setPlaybooks(playbooksData.playbooks || []);
+      setTotalCount(playbooksData.total || 0);
 
       // 2. Fetch stats
       try {
@@ -663,8 +675,13 @@ const SentinelDashboard = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(currentPage, perPage, activeTab);
+  }, [currentPage, perPage, activeTab]);
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
 
   // Normalization logic
   const getNormalizedStatus = (status) => {
@@ -676,11 +693,8 @@ const SentinelDashboard = () => {
 
   // Filter playbooks based on tab selection
   const filteredPlaybooks = useMemo(() => {
-    if (activeTab === "all") return playbooks;
-    return playbooks.filter(
-      (pb) => getNormalizedStatus(pb.status) === activeTab
-    );
-  }, [playbooks, activeTab]);
+    return playbooks;
+  }, [playbooks]);
 
   /* ── Sort toggle handler ── */
   const handleSortClick = useCallback((column) => {
@@ -724,6 +738,15 @@ const SentinelDashboard = () => {
 
   // Compute tab counts
   const counts = useMemo(() => {
+    if (stats) {
+      return {
+        all: stats.total_playbooks || 0,
+        draft: stats.pending || 0,
+        approved: (stats.approved || 0) + (stats.exported || 0),
+        rejected: stats.rejected || 0,
+      };
+    }
+    // Fallback if stats is not loaded yet (e.g. offline or first load)
     let draft = 0;
     let approved = 0;
     let rejected = 0;
@@ -739,7 +762,7 @@ const SentinelDashboard = () => {
       approved,
       rejected,
     };
-  }, [playbooks]);
+  }, [stats, playbooks]);
 
 
 
@@ -885,25 +908,25 @@ const SentinelDashboard = () => {
         <div className="sentinel-tabs-container hud-font">
           <button
             className={`sentinel-tab-btn ${activeTab === "all" ? "active" : ""}`}
-            onClick={() => setActiveTab("all")}
+            onClick={() => handleTabChange("all")}
           >
             All <span className="tab-count">{counts.all}</span>
           </button>
           <button
             className={`sentinel-tab-btn ${activeTab === "draft" ? "active" : ""}`}
-            onClick={() => setActiveTab("draft")}
+            onClick={() => handleTabChange("draft")}
           >
             Draft <span className="tab-count">{counts.draft}</span>
           </button>
           <button
             className={`sentinel-tab-btn ${activeTab === "approved" ? "active" : ""}`}
-            onClick={() => setActiveTab("approved")}
+            onClick={() => handleTabChange("approved")}
           >
             Approved <span className="tab-count">{counts.approved}</span>
           </button>
           <button
             className={`sentinel-tab-btn ${activeTab === "rejected" ? "active" : ""}`}
-            onClick={() => setActiveTab("rejected")}
+            onClick={() => handleTabChange("rejected")}
           >
             Rejected <span className="tab-count">{counts.rejected}</span>
           </button>
@@ -996,6 +1019,75 @@ const SentinelDashboard = () => {
                 onClick={() => handleCardClick(pb)}
               />
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && !error && totalCount > 0 && (
+          <div className="sentinel-pagination-container hud-font">
+            <div className="pagination-info">
+              Showing <span className="highlight">{(currentPage - 1) * perPage + 1}</span>–
+              <span className="highlight">{Math.min(currentPage * perPage, totalCount)}</span> of{" "}
+              <span className="highlight">{totalCount}</span> playbooks
+            </div>
+            
+            <div className="pagination-controls">
+              <button
+                className="pag-btn"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                PREV
+              </button>
+              
+              {Array.from({ length: Math.ceil(totalCount / perPage) }).map((_, idx) => {
+                const pageNum = idx + 1;
+                const isNearCurrent = Math.abs(currentPage - pageNum) <= 2;
+                const isFirstOrLast = pageNum === 1 || pageNum === Math.ceil(totalCount / perPage);
+                
+                if (isNearCurrent || isFirstOrLast) {
+                  return (
+                    <button
+                      key={pageNum}
+                      className={`pag-btn ${currentPage === pageNum ? "active" : ""}`}
+                      onClick={() => setCurrentPage(pageNum)}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                } else if (
+                  (pageNum === 2 && currentPage > 4) ||
+                  (pageNum === Math.ceil(totalCount / perPage) - 1 && currentPage < Math.ceil(totalCount / perPage) - 3)
+                ) {
+                  return <span key={pageNum} className="pag-ellipsis">...</span>;
+                }
+                return null;
+              })}
+
+              <button
+                className="pag-btn"
+                onClick={() => setCurrentPage((p) => Math.min(Math.ceil(totalCount / perPage), p + 1))}
+                disabled={currentPage === Math.ceil(totalCount / perPage)}
+              >
+                NEXT
+              </button>
+            </div>
+            
+            <div className="pagination-size-selector">
+              <span>ITEMS PER PAGE:</span>
+              <select
+                value={perPage}
+                onChange={(e) => {
+                  setPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value={6}>6</option>
+                <option value={12}>12</option>
+                <option value={24}>24</option>
+                <option value={48}>48</option>
+              </select>
+            </div>
           </div>
         )}
       </div>
