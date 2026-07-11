@@ -1,0 +1,11 @@
+RECORDING PATH: C:\Users\srira\Project\PhantomNet\demos\month4_sentinel_demo.webp
+
+This file serves as a reference for the comprehensive screen recording of the Sentinel Month 4 end-to-end pipeline demo. 
+The actual video was recorded natively in WebP format (which is the browser environment's standard recording container) and is saved next to this file at:
+c:\Users\srira\Project\PhantomNet\demos\month4_sentinel_demo.webp
+
+The demo shows:
+1. SSH Brute Force playbook generated, approved, and exported as Markdown.
+2. SQL Injection playbook generated, Snort/Sigma rule preview verified, and exported as STIX.
+3. Port Scan playbook generated and rejected with the reason 'False positive / Not a priority'.
+4. Dashboard navigation, pagination, metrics widget refresh, and feature vector analysis walkthrough.
