@@ -24,14 +24,17 @@ def test_training_pipeline_runs():
     """
     Smoke test for training pipeline
     """
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.path.abspath(os.path.join(PROJECT_ROOT, "backend"))
     result = subprocess.run(
         [sys.executable, "run_training.py"],
         cwd=os.path.join(PROJECT_ROOT, "backend", "ml"),
+        env=env,
         capture_output=True,
         text=True,
     )
 
-    assert result.returncode == 0, "Training script failed"
+    assert result.returncode == 0, f"Training script failed. stderr: {result.stderr}, stdout: {result.stdout}"
     assert "Training complete" in result.stdout
     assert "accuracy" in result.stdout.lower()
 
