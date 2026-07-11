@@ -434,6 +434,8 @@ PhantomNet/
 - [System Architecture & API Specs](docs/system_architecture.md)
 - [ML Pipeline & Model Tuning Guide](docs/ml_pipeline.md)
 - [Response Playbooks Syntax Guide](docs/playbooks.md)
+- [Sentinel Rule Generation Documentation](docs/rule_generation.md)
+- [Sentinel Playbook Templates Documentation](docs/playbook_templates.md)
 - [Vulnerability Disclosure Policy](SECURITY.md)
 
 ---
