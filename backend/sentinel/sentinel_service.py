@@ -139,6 +139,9 @@ class SentinelService:
         self.db = db
         self.sig_engine = SignatureEngine()
         self._playbook_gen = None  # lazy-loaded
+        import os
+        if os.environ.get("ENVIRONMENT") == "test":
+            self.__class__._seen_campaigns.clear()
 
     # ------------------------------------------------------------------
     # Lazy loader for PlaybookGenerator

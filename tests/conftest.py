@@ -8,6 +8,8 @@ test module inside tests/.
 import sys
 import os
 
+os.environ["ENVIRONMENT"] = "test"
+
 # Project root is one level above this file (tests/../)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BACKEND_DIR = os.path.join(PROJECT_ROOT, "backend")

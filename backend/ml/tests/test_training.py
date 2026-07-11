@@ -6,7 +6,8 @@ import sys
 import pytest
 from config.mlflow_env import *
 
-PROJECT_ROOT = os.path.abspath(os.path.join(__file__, "../../../.."))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", "..", ".."))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 TRAINING_CSVS = ["week6_test_events_balanced.csv", "week6_test_events.csv"]
 _has_training_data = any(

@@ -1,8 +1,21 @@
 import socket
 import time
 
-SMTP_HOST = "phantomnet_postgres"
-SMTP_PORT = 2525
+import pytest
+import os
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "localhost")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", 2525))
+
+def port_is_open(host, port):
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+if not port_is_open(SMTP_HOST, SMTP_PORT):
+    pytestmark = pytest.mark.skip(reason=f"SMTP honeypot not running on {SMTP_HOST}:{SMTP_PORT}")
 
 
 def send_cmd(sock, cmd):
