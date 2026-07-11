@@ -221,7 +221,11 @@ def list_playbooks(
         query = db.query(SentinelPlaybook)
 
         if status is not None and status.strip():
-            query = query.filter(SentinelPlaybook.status == status.strip().lower())
+            status_val = status.strip().lower()
+            if status_val == "approved":
+                query = query.filter(SentinelPlaybook.status.in_(["approved", "exported"]))
+            else:
+                query = query.filter(SentinelPlaybook.status == status_val)
         if attack_type is not None and attack_type.strip():
             query = query.filter(SentinelPlaybook.attack_type == attack_type.strip())
 
