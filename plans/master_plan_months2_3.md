@@ -2,7 +2,7 @@
 
 ---
 
-# MONTH 2: LLM INTEGRATION + ADVANCED FEATURES
+# MONTH 2: LLM INTEGRATION + ADVANCED FEATURES (MONTH 5 IN TIMELINE)
 
 **Goal**: Add optional LLM narrative enhancement, TAXII feed server, ATT&CK visualization, PDF export, and batch operations.
 
@@ -14,15 +14,15 @@
 
 ---
 
-## WEEK 5: LLM Integration (Days 21-25)
+## WEEK 5: LLM Integration (Week 17) (Days 21-25)
 
 ### Day 21 (Monday)
 
 | Dev | Task | Deliverable |
 |---|---|---|
-| **S** | Design LLM integration architecture | Document: Ollama API contract, prompt template structure, fallback mechanism |
-| **V** | Research + document Ollama installation steps for team | Setup guide: install Ollama, pull Mistral 7B, test with curl |
-| **K** | Create `sentinel/llm_service.py` — scaffold | `LLMService` class with `generate_narrative(context_data) -> str`, env var toggle `SENTINEL_LLM_ENABLED` |
+| **S** | Design LLM integration architecture | Document: Ollama API contract, prompt template structure, fallback mechanism, database schema migration (add `llm_narrative` to `sentinel_playbooks`) |
+| **V** | Research + document Ollama installation steps for team | Setup guide: install Ollama, pull Mistral 7B, test with curl. Address GPU/CPU memory limitations and fallback models (e.g. Gemma 2B) |
+| **K** | Create `backend/sentinel/llm_service.py` — scaffold | `LLMService` class with `generate_narrative(context_data) -> str`, env var toggle `SENTINEL_LLM_ENABLED` |
 | **M** | Add LLM status indicator to Sentinel Dashboard | Badge showing "AI: Online/Offline", fetched from backend health check |
 
 ### Day 22 (Tuesday)
@@ -30,8 +30,8 @@
 | Dev | Task | Deliverable |
 |---|---|---|
 | **S** | Add `/api/sentinel/llm/status` endpoint | Returns: enabled/disabled, model name, last response time |
-| **V** | Install Ollama + Mistral 7B on development machine | Working `ollama run mistral` on at least one team machine |
-| **K** | Build LLM prompt template | System prompt + structured context injection (cluster data, IOCs, ATT&CK, GeoIP, response actions) |
+| **V** | Install Ollama + Mistral 7B on development machine | Working `ollama run mistral` on at least one team machine. Validate server is listening on port 11434 |
+| **K** | Build LLM prompt template | System prompt + structured context injection (cluster data, UTC timestamps, IOCs, ATT&CK, GeoIP, response actions) |
 | **M** | Add "AI Summary" section toggle in PlaybookViewer | Show/hide LLM narrative section, visual distinction from template content |
 
 ### Day 23 (Wednesday)
@@ -40,28 +40,28 @@
 |---|---|---|
 | **S** | Add LLM toggle to SystemConfig API | Admin can enable/disable LLM from admin panel |
 | **V** | Test LLM output quality for SSH brute force scenario | Document: prompt sent, response received, quality assessment |
-| **K** | Implement Ollama HTTP API call in llm_service.py | POST to `http://localhost:11434/api/generate`, parse response, handle timeout (60s max) |
+| **K** | Implement Ollama HTTP API call in `llm_service.py` | POST to `http://localhost:11434/api/generate` using `httpx.AsyncClient` with a 60s max timeout |
 | **M** | Style AI-generated narrative differently from template content | Subtle visual indicator (border, icon, label) showing "AI-Enhanced Summary" |
 
 ### Day 24 (Thursday)
 
 | Dev | Task | Deliverable |
 |---|---|---|
-| **S** | Integrate llm_service into sentinel_service orchestrator | If LLM enabled → call LLM for narrative → store in `llm_narrative` column. If disabled → skip |
+| **S** | Integrate `llm_service` into `sentinel_service` orchestrator | If LLM enabled → call LLM asynchronously (using FastAPI `BackgroundTasks` to prevent SQLite connection locks during long network calls) → store in `llm_narrative` column |
 | **V** | Test LLM output for SQLi and port scan scenarios | Document quality for each. Identify if prompt needs adjustment |
-| **K** | Build fallback mechanism | If Ollama unreachable or times out → log warning, continue with template-only playbook, no crash |
+| **K** | Build fallback mechanism | If Ollama unreachable or times out → log warning, continue with template-only playbook, no crash. Support mock model response in tests |
 | **M** | Add "Regenerate AI Summary" button in PlaybookViewer | Re-calls LLM for the same playbook data, updates narrative |
 
 ### Day 25 (Friday)
 
 | Dev | Task | Deliverable |
 |---|---|---|
-| **S** | Write `tests/test_llm_service.py` | Test: enabled/disabled toggle, timeout handling, fallback on error |
+| **S** | Write `tests/test_llm_service.py` | Test: enabled/disabled toggle, timeout handling, fallback on error, and mock server client response |
 | **V** | Fine-tune prompt template based on test results | Improve prompt with few-shot examples if output quality is low |
-| **K** | Add response time tracking to llm_service | Log and return generation time for each LLM call |
+| **K** | Add response time tracking to `llm_service` | Log and return generation time for each LLM call |
 | **M** | End-to-end test: full pipeline with LLM enabled | Attack → playbook with AI narrative visible on dashboard |
 
-**Week 5 Checkpoint**: LLM integration works. Optional toggle functional. Fallback reliable. AI narrative visually distinguished on dashboard.
+**Week 5 Checkpoint**: LLM integration works. Optional toggle functional. Fallback reliable. AI narrative visually distinguished on dashboard. Database concurrency protected.
 
 ---
 
