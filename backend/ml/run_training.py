@@ -1,11 +1,17 @@
-import time
+import sys
 import os
-import traceback
+
+# Ensure backend/ is in sys.path so we can import 'ml' submodules
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.abspath(os.path.join(_CURRENT_DIR, ".."))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
+from ml.config.mlflow_env import TRACKING_URI, MODEL_NAME, DEFAULT_STAGE
+import mlflow
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-
-from config.mlflow_env import TRACKING_URI, MODEL_NAME, DEFAULT_STAGE
-import mlflow
+import traceback
 
 mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_registry_uri(TRACKING_URI)

@@ -1,6 +1,24 @@
 import requests
+import pytest
 
-BASE_URL = "http://phantomnet_postgres:8080"
+import os
+import socket
+
+BASE_URL = os.environ.get("HTTP_URL", "http://localhost:8080")
+
+def check_url_reachable(url):
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        host = parsed.hostname or "localhost"
+        port = parsed.port or (80 if parsed.scheme == "http" else 443)
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+if not check_url_reachable(BASE_URL):
+    pytestmark = pytest.mark.skip(reason=f"HTTP honeypot not running on {BASE_URL}")
 
 
 def test_get_admin():

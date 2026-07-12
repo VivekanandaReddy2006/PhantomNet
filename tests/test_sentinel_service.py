@@ -19,6 +19,8 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
 
+os.environ["ENVIRONMENT"] = "test"
+
 import yaml
 
 # ---------------------------------------------------------------------------

@@ -4,9 +4,11 @@ import os
 import subprocess
 import sys
 import pytest
-from config.mlflow_env import *
+# pyrefly: ignore [missing-import]
+from ml.config.mlflow_env import *
 
-PROJECT_ROOT = os.path.abspath(os.path.join(__file__, "../../../.."))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(BASE_DIR, "..", "..", ".."))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 TRAINING_CSVS = ["week6_test_events_balanced.csv", "week6_test_events.csv"]
 _has_training_data = any(
@@ -22,14 +24,17 @@ def test_training_pipeline_runs():
     """
     Smoke test for training pipeline
     """
+    env = os.environ.copy()
+    env["PYTHONPATH"] = os.path.abspath(os.path.join(PROJECT_ROOT, "backend"))
     result = subprocess.run(
         [sys.executable, "run_training.py"],
         cwd=os.path.join(PROJECT_ROOT, "backend", "ml"),
+        env=env,
         capture_output=True,
         text=True,
     )
 
-    assert result.returncode == 0, "Training script failed"
+    assert result.returncode == 0, f"Training script failed. stderr: {result.stderr}, stdout: {result.stdout}"
     assert "Training complete" in result.stdout
     assert "accuracy" in result.stdout.lower()
 

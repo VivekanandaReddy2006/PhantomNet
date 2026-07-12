@@ -1,7 +1,16 @@
+import sys
+import os
+
+# Ensure backend/ is in sys.path so we can import 'ml' submodules
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+_BACKEND_DIR = os.path.abspath(os.path.join(_CURRENT_DIR, ".."))
+if _BACKEND_DIR not in sys.path:
+    sys.path.insert(0, _BACKEND_DIR)
+
 import mlflow
 import pandas as pd
 from pathlib import Path
-from config.mlflow_env import *
+from ml.config.mlflow_env import *
 
 # 🔒 Force consistent tracking store
 PROJECT_ROOT = Path(__file__).resolve().parents[2]

@@ -1,8 +1,21 @@
 import ftplib
 import pytest
 
-FTP_HOST = "phantomnet_postgres"
-FTP_PORT = 2121
+import os
+import socket
+
+FTP_HOST = os.environ.get("FTP_HOST", "localhost")
+FTP_PORT = int(os.environ.get("FTP_PORT", 2121))
+
+def port_is_open(host, port):
+    try:
+        with socket.create_connection((host, port), timeout=1.0):
+            return True
+    except OSError:
+        return False
+
+if not port_is_open(FTP_HOST, FTP_PORT):
+    pytestmark = pytest.mark.skip(reason=f"FTP honeypot not running on {FTP_HOST}:{FTP_PORT}")
 
 VALID_USER = "PhantomNet"
 VALID_PASS = "1234"

@@ -73,32 +73,32 @@ def generate_mock_logs(n_samples=500):
 
 
 def retrain_model():
-    print("🔄 Generating 500 mock logs...")
+    print("[ML] Generating 500 mock logs...")
     logs = generate_mock_logs(500)
 
-    print("🧠 Initializing AnomalyDetector...")
+    print("[ML] Initializing AnomalyDetector...")
     detector = AnomalyDetector()
 
     # Verify feature count
     extractor = FeatureExtractor()
     sample_features = extractor.extract_features(logs[0])
-    print(f"📊 Features extracted per log: {len(sample_features)}")
-    print(f"📋 Feature list: {list(sample_features.keys())}")
+    print(f"[ML] Features extracted per log: {len(sample_features)}")
+    print(f"[ML] Feature list: {list(sample_features.keys())}")
 
     if len(sample_features) != 15:
-        print(f"❌ Error: Feature count is {len(sample_features)}, expected 15!")
+        print(f"[ML] Error: Feature count is {len(sample_features)}, expected 15!")
         return
 
-    print("🚀 Training model...")
+    print("[ML] Training model...")
     detector.train(logs)
 
     # Reload to verify
-    print("💾 Verifying saved model...")
+    print("[ML] Verifying saved model...")
 
     from backend.ml.anomaly_detector import MODEL_PATH
     loaded_model = joblib.load(MODEL_PATH)
     print(
-        f"✅ Model successfully retrained with {loaded_model.n_features_in_} features!"
+        f"[ML] Model successfully retrained with {loaded_model.n_features_in_} features!"
     )
 
 
