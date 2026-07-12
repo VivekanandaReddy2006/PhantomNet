@@ -35,10 +35,10 @@ class AnomalyDetector:
         """
         Trains the model on a batch of historical logs.
         """
-        print(f"🧠 Training on {len(logs)} logs...")
+        print(f"[ML] Training on {len(logs)} logs...")
 
         if not logs:
-            print("⚠️ No logs to train on.")
+            print("[ML] No logs to train on.")
             return
 
         # Convert list of feature dicts -> numeric feature matrix
@@ -56,7 +56,7 @@ class AnomalyDetector:
 
         # Save trained model
         joblib.dump(self.model, MODEL_PATH)
-        print("✅ Model trained and saved.")
+        print("[ML] Model trained and saved.")
 
     def predict(self, log_entry):
         """

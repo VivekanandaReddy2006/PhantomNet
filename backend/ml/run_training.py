@@ -9,6 +9,9 @@ if _BACKEND_DIR not in sys.path:
 
 from ml.config.mlflow_env import TRACKING_URI, MODEL_NAME, DEFAULT_STAGE
 import mlflow
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+import traceback
 
 mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_registry_uri(TRACKING_URI)
