@@ -1,6 +1,7 @@
 import mlflow
 import mlflow.sklearn
 from contextlib import contextmanager
+# pyrefly: ignore [missing-import]
 from ml.config.mlflow_env import TRACKING_URI, MODEL_NAME, DEFAULT_STAGE
 
 # --------------------------------------------------
