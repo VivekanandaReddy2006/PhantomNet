@@ -131,14 +131,40 @@ class LLMService:
     # Construction & configuration validation
     # ------------------------------------------------------------------
 
+    @property
+    def enabled(self) -> bool:
+        """Dynamically check if LLM is enabled, checking database first, then environment."""
+        if hasattr(self, "_enabled_override") and self._enabled_override is not None:
+            return self._enabled_override
+
+        try:
+            from database.database import SessionLocal
+            from database.models import SystemConfig
+            db = SessionLocal()
+            try:
+                cfg = db.query(SystemConfig).filter(SystemConfig.key == "sentinel_llm_enabled").first()
+                if cfg is not None:
+                    return cfg.value.strip().lower() in ("1", "true", "yes", "on")
+            finally:
+                db.close()
+        except Exception as e:
+            pass
+        
+        return getattr(self, "_env_enabled", False)
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self._enabled_override = value
+
     def __init__(self) -> None:
         """Initialise LLMService from environment variables.
 
         Reads the three Sentinel LLM environment variables and validates
         the configuration when the service is enabled.
         """
-        raw_enabled: str = os.getenv("SENTINEL_LLM_ENABLED", "false").strip().lower()
-        self.enabled: bool = raw_enabled in ("1", "true", "yes", "on")
+        self._enabled_override = None
+        raw_enabled = os.getenv("SENTINEL_LLM_ENABLED", "false").strip().lower()
+        self._env_enabled = raw_enabled in ("1", "true", "yes", "on")
 
         self.host: str = os.getenv("SENTINEL_LLM_HOST", "http://ollama:11434").strip()
         self.model: str = os.getenv("SENTINEL_LLM_MODEL", "mistral").strip()
@@ -591,11 +617,23 @@ async def generate_playbook_summary(
         prompt = build_prompt(playbook)
         narrative = ""
 
-        # Attempt Ollama call when LLM is enabled
-        llm_enabled = (
-            os.getenv("SENTINEL_LLM_ENABLED", "false").strip().lower()
-            in ("1", "true", "yes", "on")
-        )
+        # Attempt Ollama call when LLM is enabled (checking database first, then environment)
+        llm_enabled = False
+        try:
+            from database.models import SystemConfig
+            cfg = db.query(SystemConfig).filter(SystemConfig.key == "sentinel_llm_enabled").first()
+            if cfg is not None:
+                llm_enabled = cfg.value.strip().lower() in ("1", "true", "yes", "on")
+            else:
+                llm_enabled = (
+                    os.getenv("SENTINEL_LLM_ENABLED", "false").strip().lower()
+                    in ("1", "true", "yes", "on")
+                )
+        except Exception:
+            llm_enabled = (
+                os.getenv("SENTINEL_LLM_ENABLED", "false").strip().lower()
+                in ("1", "true", "yes", "on")
+            )
         if llm_enabled:
             try:
                 async with httpx.AsyncClient(timeout=10.0) as client:
