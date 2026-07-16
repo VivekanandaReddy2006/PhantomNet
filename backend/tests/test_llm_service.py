@@ -262,14 +262,14 @@ class TestLLMServiceGenerateNarrative:
     """Tests for LLMService.generate_narrative()."""
 
     def test_returns_empty_string_when_disabled(self):
-        """generate_narrative should return '' immediately when disabled."""
+        """generate_narrative should return fallback immediately when disabled."""
         with patch.dict(os.environ, {"SENTINEL_LLM_ENABLED": "false"}):
             svc = LLMService()
         result = svc.generate_narrative({"attack_type": "Brute Force"})
-        assert result == ""
+        assert "### AI-Powered Playbook Narrative (Local Fallback)" in result
 
     def test_returns_empty_string_for_empty_context(self):
-        """generate_narrative should return '' when context_data is empty."""
+        """generate_narrative should return fallback when context_data is empty."""
         env = {
             "SENTINEL_LLM_ENABLED": "true",
             "SENTINEL_LLM_HOST": "http://localhost:11434",
@@ -278,10 +278,10 @@ class TestLLMServiceGenerateNarrative:
         with patch.dict(os.environ, env):
             svc = LLMService()
         result = svc.generate_narrative({})
-        assert result == ""
+        assert "### AI-Powered Playbook Narrative (Local Fallback)" in result
 
     def test_returns_empty_string_for_non_dict_context(self):
-        """generate_narrative should return '' when context_data is not a dict."""
+        """generate_narrative should return fallback when context_data is not a dict."""
         env = {
             "SENTINEL_LLM_ENABLED": "true",
             "SENTINEL_LLM_HOST": "http://localhost:11434",
@@ -290,7 +290,7 @@ class TestLLMServiceGenerateNarrative:
         with patch.dict(os.environ, env):
             svc = LLMService()
         result = svc.generate_narrative(None)  # type: ignore[arg-type]
-        assert result == ""
+        assert "### AI-Powered Playbook Narrative (Local Fallback)" in result
 
     @patch("sentinel.llm_service.httpx.AsyncClient")
     def test_generate_narrative_success(self, mock_client_cls):
@@ -316,7 +316,7 @@ class TestLLMServiceGenerateNarrative:
 
     @patch("sentinel.llm_service.httpx.AsyncClient")
     def test_generate_narrative_ollama_offline(self, mock_client_cls):
-        """generate_narrative should return '' when Ollama is unreachable."""
+        """generate_narrative should return fallback when Ollama is unreachable."""
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
         mock_client.post.side_effect = Exception("Connection refused")
@@ -330,16 +330,18 @@ class TestLLMServiceGenerateNarrative:
             svc = LLMService()
             result = svc.generate_narrative({"attack_type": "SSH Brute Force"})
 
-        assert result == ""
+        assert "### AI-Powered Playbook Narrative (Local Fallback)" in result
 
     @patch("sentinel.llm_service.httpx.AsyncClient")
     def test_generate_narrative_non_200_response(self, mock_client_cls):
-        """generate_narrative should return '' when Ollama returns non-200."""
+        """generate_narrative should return fallback when Ollama returns non-200."""
         mock_client = AsyncMock()
         mock_client_cls.return_value.__aenter__.return_value = mock_client
 
         mock_response = MagicMock()
         mock_response.status_code = 503
+        import httpx
+        mock_response.raise_for_status.side_effect = httpx.HTTPStatusError("503 error", request=MagicMock(), response=mock_response)
         mock_client.post.return_value = mock_response
 
         env = {
@@ -351,7 +353,7 @@ class TestLLMServiceGenerateNarrative:
             svc = LLMService()
             result = svc.generate_narrative({"attack_type": "SQLi"})
 
-        assert result == ""
+        assert "### AI-Powered Playbook Narrative (Local Fallback)" in result
 
 
 class TestLLMServiceTriggerNarrative:

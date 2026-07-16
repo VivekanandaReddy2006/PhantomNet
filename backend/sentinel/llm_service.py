@@ -168,10 +168,11 @@ class LLMService:
 
         self.host: str = os.getenv("SENTINEL_LLM_HOST", "http://ollama:11434").strip()
         self.model: str = os.getenv("SENTINEL_LLM_MODEL", "mistral").strip()
+        self.mock_client: bool = os.getenv("SENTINEL_LLM_MOCK_CLIENT", "false").strip().lower() == "true"
 
         logger.info(
-            "LLMService initialised | enabled=%s host=%s model=%s",
-            self.enabled, self.host, self.model,
+            "LLMService initialised | enabled=%s host=%s model=%s mock_client=%s",
+            self.enabled, self.host, self.model, self.mock_client,
         )
 
         # Validate only when the service is enabled so that disabled
@@ -253,6 +254,10 @@ class LLMService:
         str
             The model's response text, or ``""`` on failure.
         """
+        if getattr(self, "mock_client", False):
+            logger.info("LLMService: using mock client, returning mock response.")
+            return "MOCK_NARRATIVE_OUTPUT"
+
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -263,19 +268,29 @@ class LLMService:
                         "stream": False,
                     },
                 )
-                if response.status_code == 200:
-                    result = response.json()
-                    text = result.get("response", "").strip()
-                    logger.info(
-                        "LLMService: Ollama response received (%d chars, model=%s)",
-                        len(text), self.model,
-                    )
-                    return text
-                else:
-                    logger.warning(
-                        "LLMService: Ollama returned HTTP %d — skipping LLM narrative.",
-                        response.status_code,
-                    )
+                response.raise_for_status()
+                result = response.json()
+                text = result.get("response", "").strip()
+                logger.info(
+                    "LLMService: Ollama response received (%d chars, model=%s)",
+                    len(text), self.model,
+                )
+                return text
+        except httpx.TimeoutException as exc:
+            logger.warning(
+                "LLMService: Network timeout while reaching Ollama at %s: %s",
+                self.host, exc,
+            )
+        except httpx.RequestError as exc:
+            logger.warning(
+                "LLMService: Connection error while reaching Ollama at %s: %s",
+                self.host, exc,
+            )
+        except httpx.HTTPStatusError as exc:
+            logger.warning(
+                "LLMService: Ollama returned HTTP %s — skipping LLM narrative.",
+                exc.response.status_code,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "LLMService: Failed to reach Ollama at %s: %s",
@@ -391,13 +406,41 @@ class LLMService:
         )
         return "\n".join(lines)
 
+    def _generate_fallback(self, context_data: Dict[str, Any]) -> str:
+        """Generate a template-only fallback narrative from context data."""
+        return (
+            f"### AI-Powered Playbook Narrative (Local Fallback)\n\n"
+            f"**Threat Analysis**\n"
+            f"A **{context_data.get('severity', 'HIGH')}** severity security event has been "
+            f"identified as **{context_data.get('attack_type', 'Unknown Attack')}** targeting "
+            f"port **{context_data.get('dst_port', 'unknown')}** using the "
+            f"**{context_data.get('protocol', 'TCP')}** protocol. This activity aligns with "
+            f"MITRE ATT&CK technique "
+            f"**{context_data.get('technique_name', 'Unknown Technique')} "
+            f"({context_data.get('technique_id', 'T1000')})** under the "
+            f"**{context_data.get('tactic', 'Unknown Tactic')}** tactic. The threat scoring "
+            f"service assigned this event a confidence level of "
+            f"**{context_data.get('threat_score', 0.0)}%**.\n\n"
+            f"**Containment & Response Narrative**\n"
+            f"1. **Source Isolation**: Immediately quarantine or block the attacker "
+            f"source IP (**{context_data.get('src_ip', 'unknown')}**) at the perimeter "
+            f"firewall to halt active probes.\n"
+            f"2. **Alert Verification**: Inspect signature events and correlation "
+            f"logs matching the target port **{context_data.get('dst_port', 'unknown')}** "
+            f"for anomalies or lateral movement.\n"
+            f"3. **Detection Validation**: Ensure IDS signatures, such as the Snort "
+            f"rules defined in this playbook, are actively monitoring the relevant "
+            f"network segment.\n"
+            f"4. **Post-Incident Reporting**: Document all containment steps and "
+            f"monitor the affected assets for persistent connection attempts.\n"
+        )
+
     def generate_narrative(self, context_data: Dict[str, Any]) -> str:
         """Generate an AI-enhanced narrative for the given context data.
 
         This is the primary public method of ``LLMService``.  When
         ``SENTINEL_LLM_ENABLED`` is ``false`` (default), it immediately
-        returns an empty string so callers fall back to the local structured
-        narrative without any network call.
+        returns a template-only fallback narrative.
 
         When enabled, it calls the Ollama ``/api/generate`` endpoint
         synchronously (running an event loop internally if none is active,
@@ -424,7 +467,7 @@ class LLMService:
         Returns
         -------
         str
-            AI-generated Markdown narrative, or ``""`` when:
+            AI-generated Markdown narrative, or fallback template when:
             - ``SENTINEL_LLM_ENABLED`` is ``false``
             - Ollama is unreachable or returns a non-200 status
             - Any unexpected exception occurs during generation
@@ -437,19 +480,21 @@ class LLMService:
         """
         # --- Guard: service disabled ---
         if not self.enabled:
-            logger.debug(
+            logger.warning(
                 "LLMService.generate_narrative: SENTINEL_LLM_ENABLED=false — "
-                "returning empty string (callers should use fallback narrative)."
+                "returning template-only fallback generation."
             )
-            return ""
+            if not isinstance(context_data, dict):
+                context_data = {}
+            return self._generate_fallback(context_data)
 
         # --- Build prompt ---
         if not context_data or not isinstance(context_data, dict):
             logger.warning(
                 "LLMService.generate_narrative: context_data is empty or not a dict — "
-                "returning empty string."
+                "returning template-only fallback generation."
             )
-            return ""
+            return self._generate_fallback({})
 
         prompt = self._build_context_prompt(context_data)
         logger.info(
@@ -476,6 +521,10 @@ class LLMService:
                 exc,
             )
             narrative = ""
+
+        if not narrative:
+            logger.warning("LLMService.generate_narrative: Using template-only fallback generation.")
+            narrative = self._generate_fallback(context_data)
 
         return narrative
 
