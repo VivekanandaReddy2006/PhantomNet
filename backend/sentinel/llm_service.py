@@ -185,10 +185,11 @@ class LLMService:
 
         self.host: str = os.getenv("SENTINEL_LLM_HOST", "http://ollama:11434").strip()
         self.model: str = os.getenv("SENTINEL_LLM_MODEL", "mistral").strip()
+        self.mock_client: bool = os.getenv("SENTINEL_LLM_MOCK_CLIENT", "false").strip().lower() == "true"
 
         logger.info(
-            "LLMService initialised | enabled=%s host=%s model=%s",
-            self.enabled, self.host, self.model,
+            "LLMService initialised | enabled=%s host=%s model=%s mock_client=%s",
+            self.enabled, self.host, self.model, self.mock_client,
         )
 
         # Validate only when the service is enabled so that disabled
@@ -323,6 +324,10 @@ class LLMService:
         str
             The model's response as clean Markdown text, or ``""`` on failure.
         """
+        if getattr(self, "mock_client", False):
+            logger.info("LLMService: using mock client, returning mock response.")
+            return "MOCK_NARRATIVE_OUTPUT"
+
         url = f"{self.host}/api/generate"
         payload: Dict[str, Any] = {
             "model": self.model,
@@ -514,6 +519,35 @@ class LLMService:
         )
         return "\n".join(lines)
 
+    def _generate_fallback(self, context_data: Dict[str, Any]) -> str:
+        """Generate a template-only fallback narrative from context data."""
+        return (
+            f"### AI-Powered Playbook Narrative (Local Fallback)\n\n"
+            f"**Threat Analysis**\n"
+            f"A **{context_data.get('severity', 'HIGH')}** severity security event has been "
+            f"identified as **{context_data.get('attack_type', 'Unknown Attack')}** targeting "
+            f"port **{context_data.get('dst_port', 'unknown')}** using the "
+            f"**{context_data.get('protocol', 'TCP')}** protocol. This activity aligns with "
+            f"MITRE ATT&CK technique "
+            f"**{context_data.get('technique_name', 'Unknown Technique')} "
+            f"({context_data.get('technique_id', 'T1000')})** under the "
+            f"**{context_data.get('tactic', 'Unknown Tactic')}** tactic. The threat scoring "
+            f"service assigned this event a confidence level of "
+            f"**{context_data.get('threat_score', 0.0)}%**.\n\n"
+            f"**Containment & Response Narrative**\n"
+            f"1. **Source Isolation**: Immediately quarantine or block the attacker "
+            f"source IP (**{context_data.get('src_ip', 'unknown')}**) at the perimeter "
+            f"firewall to halt active probes.\n"
+            f"2. **Alert Verification**: Inspect signature events and correlation "
+            f"logs matching the target port **{context_data.get('dst_port', 'unknown')}** "
+            f"for anomalies or lateral movement.\n"
+            f"3. **Detection Validation**: Ensure IDS signatures, such as the Snort "
+            f"rules defined in this playbook, are actively monitoring the relevant "
+            f"network segment.\n"
+            f"4. **Post-Incident Reporting**: Document all containment steps and "
+            f"monitor the affected assets for persistent connection attempts.\n"
+        )
+
     async def async_generate_narrative(
         self,
         context_data: Dict[str, Any],
@@ -595,8 +629,7 @@ class LLMService:
 
         Synchronous convenience wrapper around :meth:`async_generate_narrative`.
         When ``SENTINEL_LLM_ENABLED`` is ``false`` (default), it immediately
-        returns an empty string so callers fall back to the local structured
-        narrative without any network call.
+        returns a template-only fallback narrative.
 
         When enabled, it internally drives the async coroutine using the
         active event loop (FastAPI/Uvicorn) or a new event loop when running
@@ -624,26 +657,28 @@ class LLMService:
         Returns
         -------
         str
-            AI-generated Markdown narrative, or ``""`` when:
+            AI-generated Markdown narrative, or fallback template when:
             - ``SENTINEL_LLM_ENABLED`` is ``false``
             - Ollama is unreachable or returns a non-200 status
             - Any unexpected exception occurs during generation
         """
         # --- Guard: service disabled ---
         if not self.enabled:
-            logger.debug(
+            logger.warning(
                 "LLMService.generate_narrative: SENTINEL_LLM_ENABLED=false — "
-                "returning empty string (callers should use fallback narrative)."
+                "returning template-only fallback generation."
             )
-            return ""
+            if not isinstance(context_data, dict):
+                context_data = {}
+            return self._generate_fallback(context_data)
 
         # --- Build prompt ---
         if not context_data or not isinstance(context_data, dict):
             logger.warning(
                 "LLMService.generate_narrative: context_data is empty or not a dict — "
-                "returning empty string."
+                "returning template-only fallback generation."
             )
-            return ""
+            return self._generate_fallback({})
 
         prompt = self._build_context_prompt(context_data)
         logger.info(
@@ -672,6 +707,10 @@ class LLMService:
                 exc,
             )
             narrative = ""
+
+        if not narrative:
+            logger.warning("LLMService.generate_narrative: Using template-only fallback generation.")
+            narrative = self._generate_fallback(context_data)
 
         return narrative
 
