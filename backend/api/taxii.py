@@ -4,15 +4,16 @@ backend/api/taxii.py
 PhantomNet TAXII 2.1 Feed Server — REST API Endpoints
 
 Provides TAXII 2.1 protocol compliant endpoints:
-  GET /taxii2/                                      — Server Discovery
-  GET /taxii2/phantomnet/                           — API Root Information
-  GET /taxii2/phantomnet/collections/             — Collections List
-  GET /taxii2/phantomnet/collections/{id}/          — Specific Collection Detail
+  GET /taxii2/                                           — Server Discovery
+  GET /taxii2/phantomnet/                                — API Root Information
+  GET /taxii2/phantomnet/collections/                  — Collections List
+  GET /taxii2/phantomnet/collections/{collection_id}/   — Specific Collection Detail
+  GET /taxii2/phantomnet/collections/{collection_id}/objects/ — STIX Objects Retrieval
 
 Spec Compliance:
-  - Enforces OASIS TAXII 2.1 media type negotiation (Content-Type: application/taxii+json;version=2.1)
+  - Enforces OASIS TAXII 2.1 media type negotiation (Content-Type: application/taxii+json;version=2.1 and application/stix+json;version=2.1)
   - Rejects unsupported explicit Accept headers with 406 Not Acceptable
-  - Queries SQLite database for dynamic collection mappings (tactics, honeypot sources)
+  - Queries SQLite database for dynamic collection mappings (tactics, honeypot sources) and builds STIX 2.1 bundles.
 
 Week 18, Day 1 & Day 2 — TAXII Server Architecture & Collections Endpoint
 """
@@ -20,9 +21,11 @@ Week 18, Day 1 & Day 2 — TAXII Server Architecture & Collections Endpoint
 from __future__ import annotations
 
 import logging
+import uuid
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -39,6 +42,7 @@ from schemas.taxii import (
 logger = logging.getLogger("api.taxii")
 
 TAXII_MEDIA_TYPE = "application/taxii+json;version=2.1"
+STIX_MEDIA_TYPE = "application/stix+json;version=2.1"
 
 router = APIRouter(prefix="/taxii2", tags=["TAXII 2.1 Feed"])
 
@@ -71,7 +75,7 @@ def _validate_accept_header(accept: Optional[str]) -> None:
             title="Not Acceptable",
             description=(
                 f"The requested Accept header '{accept}' is not supported by TAXII 2.1. "
-                f"Expected '{TAXII_MEDIA_TYPE}' or 'application/stix+json;version=2.1'."
+                f"Expected '{TAXII_MEDIA_TYPE}' or '{STIX_MEDIA_TYPE}'."
             ),
             http_status="406",
         )
@@ -101,7 +105,7 @@ def get_taxii_collections(db: Session) -> List[TaxiiCollectionResource]:
             alias="approved-playbooks",
             can_read=True,
             can_write=False,
-            media_types=["application/stix+json;version=2.1"],
+            media_types=[STIX_MEDIA_TYPE],
         )
     ]
 
@@ -126,7 +130,7 @@ def get_taxii_collections(db: Session) -> List[TaxiiCollectionResource]:
                             alias=slug,
                             can_read=True,
                             can_write=False,
-                            media_types=["application/stix+json;version=2.1"],
+                            media_types=[STIX_MEDIA_TYPE],
                         )
                     )
     except Exception as exc:
@@ -160,7 +164,7 @@ def get_taxii_collections(db: Session) -> List[TaxiiCollectionResource]:
                             alias=alias_name,
                             can_read=True,
                             can_write=False,
-                            media_types=["application/stix+json;version=2.1"],
+                            media_types=[STIX_MEDIA_TYPE],
                         )
                     )
     except Exception as exc:
@@ -293,4 +297,127 @@ def get_collection_detail(
         content=matched.model_dump(),
         status_code=200,
         headers={"Content-Type": TAXII_MEDIA_TYPE},
+    )
+
+
+# ---------------------------------------------------------------------------
+# 5. GET /taxii2/phantomnet/collections/{id}/objects/ — Collection Objects Endpoint
+# ---------------------------------------------------------------------------
+
+@router.get(
+    "/phantomnet/collections/{id}/objects/",
+    summary="Get TAXII Collection STIX Objects",
+    description="Returns a STIX 2.1 bundle containing objects for the requested collection.",
+)
+@router.get(
+    "/phantomnet/collections/{id}/objects",
+    include_in_schema=False,
+)
+def get_collection_objects(
+    id: str = Path(..., description="The ID or alias of the collection"),
+    db: Session = Depends(get_db),
+    accept: Optional[str] = Header(None),
+) -> JSONResponse:
+    _validate_accept_header(accept)
+
+    if not id or id.strip() == "":
+        err = TaxiiErrorResponse(
+            title="Invalid Parameter",
+            description="Collection ID cannot be empty.",
+            http_status="400",
+        )
+        return JSONResponse(
+            content=err.model_dump(),
+            status_code=400,
+            headers={"Content-Type": TAXII_MEDIA_TYPE},
+        )
+
+    # Check if collection exists
+    cols = get_taxii_collections(db)
+    matched_col = next(
+        (c for c in cols if c.id == id or c.alias == id), None
+    )
+
+    # Fetch playbooks from DB
+    try:
+        query = db.query(SentinelPlaybook)
+        if matched_col and matched_col.id.startswith("tactic-"):
+            tactic_slug = matched_col.id.replace("tactic-", "")
+            playbooks = [
+                pb for pb in query.all()
+                if pb.tactic and pb.tactic.strip().lower().replace(" ", "-").replace("/", "-") == tactic_slug
+            ]
+        elif matched_col and matched_col.id.startswith("honeypot-"):
+            port_map = {"cowrie-ssh": 22, "web-http": 80, "web-https": 443, "dionaea-mysql": 3306, "dionaea-ftp": 21}
+            port = port_map.get(matched_col.alias)
+            if port:
+                playbooks = query.filter(SentinelPlaybook.dst_port == port).all()
+            else:
+                playbooks = query.all()
+        else:
+            playbooks = query.all()
+    except Exception as e:
+        logger.error("Failed to query playbooks for collection objects: %s", e)
+        err = TaxiiErrorResponse(
+            title="Internal Server Error",
+            description=str(e),
+            http_status="500",
+        )
+        return JSONResponse(
+            content=err.model_dump(),
+            status_code=500,
+            headers={"Content-Type": TAXII_MEDIA_TYPE},
+        )
+
+    stix_objects: List[Dict[str, Any]] = []
+    for pb in playbooks:
+        created_at = (
+            pb.created_at.isoformat() + "Z"
+            if getattr(pb, "created_at", None)
+            else datetime.utcnow().isoformat() + "Z"
+        )
+        updated_at = (
+            pb.updated_at.isoformat() + "Z"
+            if getattr(pb, "updated_at", None)
+            else created_at
+        )
+
+        report_id = f"report--{pb.playbook_id if pb.playbook_id else uuid.uuid4()}"
+        report_obj: Dict[str, Any] = {
+            "type": "report",
+            "id": report_id,
+            "name": getattr(pb, "playbook_name", None) or f"Sentinel Threat Playbook ({pb.playbook_id})",
+            "description": getattr(pb, "playbook_content", None) or getattr(pb, "llm_narrative", None) or f"Threat detection playbook for tactic {pb.tactic}",
+            "published": created_at,
+            "created": created_at,
+            "modified": updated_at,
+            "object_refs": [],
+        }
+        stix_objects.append(report_obj)
+
+        if pb.src_ip:
+            indicator_id = f"indicator--{uuid.uuid4()}"
+            indicator_obj = {
+                "type": "indicator",
+                "id": indicator_id,
+                "name": f"Malicious Source IP: {pb.src_ip}",
+                "pattern": f"[ipv4-addr:value = '{pb.src_ip}']",
+                "pattern_type": "stix",
+                "valid_from": created_at,
+                "created": created_at,
+                "modified": updated_at,
+            }
+            stix_objects.append(indicator_obj)
+            report_obj["object_refs"].append(indicator_id)
+
+    bundle = {
+        "type": "bundle",
+        "id": f"bundle--{uuid.uuid4()}",
+        "objects": stix_objects,
+    }
+
+    return JSONResponse(
+        content=bundle,
+        status_code=200,
+        headers={"Content-Type": STIX_MEDIA_TYPE},
     )

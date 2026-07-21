@@ -157,6 +157,18 @@ def test_taxii_invalid_accept_header_406(client):
     assert res.status_code == 406
 
 
+def test_taxii_collection_objects(client):
+    """Verify STIX 2.1 bundle object retrieval endpoint GET /taxii2/phantomnet/collections/{id}/objects/."""
+    res = client.get("/taxii2/phantomnet/collections/sentinel-playbooks-approved/objects/")
+    assert res.status_code == 200
+    assert "application/stix+json;version=2.1" in res.headers.get("content-type", "")
+
+    data = res.json()
+    assert data["type"] == "bundle"
+    assert "objects" in data
+    assert isinstance(data["objects"], list)
+
+
 if __name__ == "__main__":
     test_client = TestClient(app)
     print("Running test_taxii_discovery...")
@@ -175,4 +187,6 @@ if __name__ == "__main__":
     test_taxii_collection_detail_not_found(test_client)
     print("Running test_taxii_invalid_accept_header_406...")
     test_taxii_invalid_accept_header_406(test_client)
-    print("\nSUCCESS: All 8 TAXII 2.1 Server tests passed successfully!")
+    print("Running test_taxii_collection_objects...")
+    test_taxii_collection_objects(test_client)
+    print("\nSUCCESS: All 9 TAXII 2.1 Server tests passed successfully!")
