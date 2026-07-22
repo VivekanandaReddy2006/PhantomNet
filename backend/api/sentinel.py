@@ -954,11 +954,16 @@ def get_mitre_matrix(db: Session = Depends(get_db)) -> Dict[str, Any]:
     """
     from sentinel.mitre_matrix import get_aggregated_matrix_data
     try:
-        return get_aggregated_matrix_data(db)
+        data = get_aggregated_matrix_data(db)
+        if isinstance(data, dict) and "status" in data:
+            return data
+        return {
+            "status": "success",
+            "matrix": data
+        }
     except Exception as exc:
         logger.error("Failed to get MITRE ATT&CK matrix data: %s", exc)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch MITRE matrix data: {str(exc)}"
         )
-
