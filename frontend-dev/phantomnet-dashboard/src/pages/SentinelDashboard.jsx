@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync } from "react-icons/fa";
 import PlaybookCard from "../components/sentinel/PlaybookCard";
 import MitreTag from "../components/sentinel/MitreTag";
+import MitreMatrix from "../components/sentinel/MitreMatrix";
 import RulePreview from "../components/sentinel/RulePreview";
 import PlaybookViewer from "../components/sentinel/PlaybookViewer";
 import MitreMatrix from "../components/sentinel/MitreMatrix";
@@ -102,6 +103,7 @@ const SentinelDashboard = () => {
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   const [techniques, setTechniques] = useState(sampleTechniques);
+  const [matrixData, setMatrixData] = useState(null);
   const [aiStatus, setAiStatus] = useState("checking");
 
   /* ── Navigation Tab State ── */
@@ -209,6 +211,17 @@ const SentinelDashboard = () => {
       } catch (llmErr) {
         console.warn("Could not fetch Sentinel LLM status:", llmErr);
         setAiStatus("offline");
+      }
+
+      // 5. Fetch MITRE ATT&CK Matrix Data
+      try {
+        const mRes = await fetch("/api/sentinel/mitre/matrix");
+        const mData = await mRes.json();
+        if (mRes.ok) {
+          setMatrixData(mData);
+        }
+      } catch (mErr) {
+        console.warn("Could not fetch MITRE ATT&CK Matrix data:", mErr);
       }
 
     } catch (err) {
