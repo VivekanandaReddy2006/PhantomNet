@@ -20,21 +20,19 @@ Week 18, Day 4 — Comprehensive TAXII Endpoint Test Suite (AI/ML Developer)
 """
 
 import os
-os.environ["ENVIRONMENT"] = "test"
+import sys
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 from datetime import datetime
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-try:
-    from backend.api.taxii import router as taxii_router
-    from backend.database.database import get_db, SessionLocal
-    from backend.sentinel.models import SentinelPlaybook
-except ImportError:
-    from api.taxii import router as taxii_router
-    from database.database import get_db, SessionLocal
-    from sentinel.models import SentinelPlaybook
+from sentinel.models import SentinelPlaybook
+from database.database import Base, engine, SessionLocal, get_db
+from api.taxii import router as taxii_router
 
 app = FastAPI()
 app.include_router(taxii_router)
@@ -49,10 +47,12 @@ def client():
         yield c
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def seeded_db():
     """Insert test playbooks into the database for integration tests and clean up after."""
+    Base.metadata.create_all(bind=engine)
     db = SessionLocal()
+
     test_playbooks = [
         SentinelPlaybook(
             playbook_id="PB-TEST-COMPREHENSIVE-001",

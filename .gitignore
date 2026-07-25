@@ -37,11 +37,21 @@ backend/.venv/
 *.log
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
 phantomnet.db
 phantomnet.db-journal
 backend/phantomnet.db
 backend/full_schema.sql
 backend/verify_output.txt
+
+# PCAPs and Experiment Data
+data/pcaps/
+*.pcap
+experiments/
+last_sid.txt
+**/last_sid.txt
 
 # Logs (prevent merge conflicts)
 backend/logs/*.jsonl
@@ -118,6 +128,7 @@ wsl
 test_siem.py
 node_modules/
 
-# Raw packet capture data (large binary files)
-data/pcaps/
-*.pcap
+# Research Paper files & outputs
+Research Paper/
+*.docx
+

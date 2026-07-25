@@ -601,6 +601,20 @@ def get_collection_objects(
         )
 
     stix_objects: List[Dict[str, Any]] = []
+    
+    if playbooks:
+        # 1. Base PhantomNet Identity Anchor Object
+        phantomnet_identity = {
+            "type": "identity",
+            "id": "identity--0b784a91-4e78-5777-a721-6ffab3b2f211",
+            "spec_version": "2.1",
+            "name": "PhantomNet Threat Intelligence Feed",
+            "identity_class": "system",
+            "created": "2026-01-01T00:00:00.000Z",
+            "modified": "2026-01-01T00:00:00.000Z",
+        }
+        stix_objects.append(phantomnet_identity)
+
     for pb in playbooks:
         created_at = (
             pb.created_at.isoformat() + "Z"
@@ -613,24 +627,47 @@ def get_collection_objects(
             else created_at
         )
 
-        report_id = f"report--{pb.playbook_id if pb.playbook_id else uuid.uuid4()}"
-        report_obj: Dict[str, Any] = {
-            "type": "report",
-            "id": report_id,
-            "name": getattr(pb, "playbook_name", None) or f"Sentinel Threat Playbook ({pb.playbook_id})",
-            "description": getattr(pb, "playbook_content", None) or getattr(pb, "llm_narrative", None) or f"Threat detection playbook for tactic {pb.tactic}",
-            "published": created_at,
-            "created": created_at,
-            "modified": updated_at,
-            "object_refs": [],
-        }
-        stix_objects.append(report_obj)
+        pb_seed = str(pb.playbook_id) if getattr(pb, "playbook_id", None) else str(uuid.uuid4())
+        
+        # Ensure valid STIX 2.1 UUID format for Report ID
+        if pb_seed.startswith("report--"):
+            report_id = pb_seed
+        else:
+            report_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"phantomnet:report:{pb_seed}"))
+            report_id = f"report--{report_uuid}"
 
-        if pb.src_ip:
-            indicator_id = f"indicator--{uuid.uuid4()}"
+        object_refs: List[str] = [phantomnet_identity["id"]]
+
+        # Optional AttackPattern Object
+        if getattr(pb, "technique_id", None):
+            t_id = pb.technique_id.strip()
+            ap_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"phantomnet:attack-pattern:{t_id}"))
+            ap_id = f"attack-pattern--{ap_uuid}"
+            ap_obj = {
+                "type": "attack-pattern",
+                "id": ap_id,
+                "spec_version": "2.1",
+                "name": getattr(pb, "technique_name", None) or t_id,
+                "description": f"MITRE ATT&CK technique {t_id} associated with tactic {getattr(pb, 'tactic', 'Unknown')}",
+                "created": created_at,
+                "modified": updated_at,
+                "external_references": [{
+                    "source_name": "mitre-attack",
+                    "external_id": t_id,
+                    "url": getattr(pb, "mitre_url", None) or f"https://attack.mitre.org/techniques/{t_id.replace('.', '/')}/"
+                }]
+            }
+            stix_objects.append(ap_obj)
+            object_refs.append(ap_id)
+
+        # Optional Indicator Object
+        if getattr(pb, "src_ip", None):
+            ind_uuid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"phantomnet:indicator:{pb_seed}:{pb.src_ip}"))
+            indicator_id = f"indicator--{ind_uuid}"
             indicator_obj = {
                 "type": "indicator",
                 "id": indicator_id,
+                "spec_version": "2.1",
                 "name": f"Malicious Source IP: {pb.src_ip}",
                 "pattern": f"[ipv4-addr:value = '{pb.src_ip}']",
                 "pattern_type": "stix",
@@ -639,7 +676,21 @@ def get_collection_objects(
                 "modified": updated_at,
             }
             stix_objects.append(indicator_obj)
-            report_obj["object_refs"].append(indicator_id)
+            object_refs.append(indicator_id)
+
+        # Report Object
+        report_obj: Dict[str, Any] = {
+            "type": "report",
+            "id": report_id,
+            "spec_version": "2.1",
+            "name": getattr(pb, "playbook_name", None) or f"Sentinel Threat Playbook ({pb_seed})",
+            "description": getattr(pb, "playbook_content", None) or getattr(pb, "llm_narrative", None) or f"Threat detection playbook for tactic {getattr(pb, 'tactic', 'Unknown')}",
+            "published": created_at,
+            "created": created_at,
+            "modified": updated_at,
+            "object_refs": object_refs,
+        }
+        stix_objects.append(report_obj)
 
     bundle = {
         "type": "bundle",
