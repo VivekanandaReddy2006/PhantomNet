@@ -840,6 +840,11 @@ class SentinelService:
             playbook_content=playbook_content,
             template_name=template_name,
             status="pending",
+            # Version tracking — new playbooks start at v1
+            version=1,
+            is_latest=True,
+            parent_id=None,
+            regeneration_reason=None,
         )
 
         try:
@@ -949,3 +954,107 @@ class SentinelService:
                 "Started background thread for LLM narrative generation "
                 "for playbook %d.", playbook_id
             )
+
+    # ------------------------------------------------------------------
+    # Regenerate playbook with version tracking
+    # ------------------------------------------------------------------
+    def regenerate_playbook(
+        self,
+        original_playbook_id: int,
+        reason: str = "Analyst-requested regeneration",
+        background_tasks: Optional[BackgroundTasks] = None,
+    ) -> SentinelPlaybook:
+        """Regenerate a playbook, creating a new versioned record.
+
+        The original playbook's threat context (source IPs, ports, protocols,
+        attack type) is re-run through the full Sentinel pipeline to produce
+        an updated playbook.  The previous version is preserved in the database
+        with ``is_latest=False``, and the new record links back via
+        ``parent_id``.
+
+        Args:
+            original_playbook_id: Database ``id`` of the playbook to regenerate.
+            reason: Human-readable reason for regeneration (stored in
+                ``regeneration_reason`` for audit trail).
+            background_tasks: Optional FastAPI BackgroundTasks for async LLM.
+
+        Returns:
+            The newly created SentinelPlaybook ORM object (latest version).
+
+        Raises:
+            ValueError: If the original playbook is not found.
+        """
+        # ── Step 1: Load the original playbook ────────────────────────────
+        original = (
+            self.db.query(SentinelPlaybook)
+            .filter(SentinelPlaybook.id == original_playbook_id)
+            .first()
+        )
+        if original is None:
+            raise ValueError(
+                f"Playbook with id={original_playbook_id} not found for regeneration"
+            )
+
+        logger.info(
+            "Regenerating playbook id=%d (v%d) — reason: %s",
+            original.id, original.version, reason,
+        )
+
+        # ── Step 2: Determine the new version number ──────────────────────
+        # Walk the chain to find the highest existing version
+        history = SentinelPlaybook.get_version_history(
+            self.db, parent_chain_id=original.id
+        )
+        max_version = max(r.version for r in history) if history else original.version
+        new_version = max_version + 1
+
+        # ── Step 3: Mark ALL versions in chain as is_latest=False ─────────
+        for row in history:
+            if row.is_latest:
+                row.is_latest = False
+        try:
+            self.db.flush()
+        except Exception as exc:
+            self.db.rollback()
+            logger.error("Failed to clear is_latest flags: %s", exc)
+            raise
+
+        # ── Step 4: Re-build campaign data from original ──────────────────
+        campaign_data = {
+            "source_ips": [original.src_ip] if original.src_ip else [],
+            "target_ports": [original.dst_port] if original.dst_port else [],
+            "protocols": [original.protocol] if original.protocol else ["TCP"],
+            "event_count": 0,  # Will be re-counted from PacketLog
+            "campaign_id": f"REGEN-{original.playbook_id}",
+        }
+
+        # ── Step 5: Run the full pipeline (steps 1–7 of generate_playbook)
+        #    We call generate_playbook internally, then fix up the version
+        #    fields on the resulting record.
+        #    First, temporarily clear the dedup cache for the regen campaign ID
+        regen_campaign_id = campaign_data["campaign_id"]
+        self.__class__._seen_campaigns.pop(regen_campaign_id, None)
+
+        new_playbook = self.generate_playbook(
+            campaign_data, background_tasks=background_tasks
+        )
+
+        # ── Step 6: Patch version tracking fields on new record ───────────
+        new_playbook.version = new_version
+        new_playbook.parent_id = original.id
+        new_playbook.is_latest = True
+        new_playbook.regeneration_reason = reason
+
+        try:
+            self.db.commit()
+            self.db.refresh(new_playbook)
+            logger.info(
+                "Regenerated playbook: new id=%d (v%d), parent=%d (v%d)",
+                new_playbook.id, new_version, original.id, original.version,
+            )
+        except Exception as exc:
+            self.db.rollback()
+            logger.error("Failed to persist regenerated playbook: %s", exc)
+            raise
+
+        return new_playbook

@@ -76,6 +76,10 @@ class PlaybookSummary(BaseModel):
     status: str = "pending"
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    # Version tracking
+    version: int = 1
+    parent_id: Optional[int] = None
+    is_latest: bool = True
 
     class Config:
         from_attributes = True
@@ -91,9 +95,29 @@ class PlaybookDetail(PlaybookSummary):
     llm_narrative: Optional[str] = None
     reviewed_by: Optional[str] = None
     reviewed_at: Optional[str] = None
+    regeneration_reason: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+class RegenerateRequest(BaseModel):
+    """Request body for POST /playbooks/{id}/regenerate."""
+    reason: str = Field(
+        default="Analyst-requested regeneration",
+        min_length=1,
+        max_length=512,
+        description="Reason for regenerating the playbook",
+    )
+
+    @field_validator("reason")
+    @classmethod
+    def validate_reason(cls, v: str) -> str:
+        """Strip whitespace and reject empty reason values."""
+        v = v.strip()
+        if not v:
+            raise ValueError("reason must not be empty or whitespace")
+        return v
 
 
 class GenerateRequest(BaseModel):
@@ -165,14 +189,14 @@ class BatchReviewRequest(BaseModel):
 def _serialize_playbook_summary(row: SentinelPlaybook) -> Dict[str, Any]:
     """Convert a SentinelPlaybook ORM object to a summary dict.
 
-    Includes core identity, threat context, MITRE mapping, and lifecycle
-    fields.  Datetime columns are serialised to ISO-8601 strings.
+    Includes core identity, version tracking, threat context, MITRE mapping,
+    and lifecycle fields.  Datetime columns are serialised to ISO-8601 strings.
 
     Args:
         row: SentinelPlaybook ORM instance.
 
     Returns:
-        Dictionary with 14 summary fields.
+        Dictionary with 17 summary fields.
     """
     return {
         "id": row.id,
@@ -189,6 +213,10 @@ def _serialize_playbook_summary(row: SentinelPlaybook) -> Dict[str, Any]:
         "status": row.status,
         "created_at": row.created_at.isoformat() if row.created_at else None,
         "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+        # Version tracking
+        "version": row.version,
+        "parent_id": row.parent_id,
+        "is_latest": row.is_latest,
     }
 
 
@@ -196,13 +224,13 @@ def _serialize_playbook_detail(row: SentinelPlaybook) -> Dict[str, Any]:
     """Convert a SentinelPlaybook ORM object to a full detail dict.
 
     Extends :func:`_serialize_playbook_summary` with rules, playbook
-    content, and review lifecycle fields.
+    content, version tracking details, and review lifecycle fields.
 
     Args:
         row: SentinelPlaybook ORM instance.
 
     Returns:
-        Dictionary with all 22 serialised fields.
+        Dictionary with all 26 serialised fields.
     """
     data = _serialize_playbook_summary(row)
     data.update({
@@ -214,6 +242,7 @@ def _serialize_playbook_detail(row: SentinelPlaybook) -> Dict[str, Any]:
         "llm_narrative": row.llm_narrative,
         "reviewed_by": row.reviewed_by,
         "reviewed_at": row.reviewed_at.isoformat() if row.reviewed_at else None,
+        "regeneration_reason": row.regeneration_reason,
     })
     return data
 
@@ -1156,3 +1185,141 @@ def batch_reject_playbooks(
         "message": f"Processed {len(body.playbook_ids)} playbooks. {len(results['successful'])} successful, {len(results['failed'])} failed.",
         "results": results
     }
+
+
+# ---------------------------------------------------------------------------
+# 16. POST /api/sentinel/playbooks/{id}/regenerate — Regenerate with version tracking
+# ---------------------------------------------------------------------------
+
+@router.post("/playbooks/{playbook_id}/regenerate", response_model=Dict[str, Any])
+def regenerate_playbook(
+    playbook_id: int = Path(..., ge=1, description="Database ID of the playbook to regenerate"),
+    body: RegenerateRequest = RegenerateRequest(),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Regenerate a playbook, creating a new versioned record.
+
+    The original playbook is preserved as a historical version with
+    ``is_latest=False``.  A new record is created by re-running the full
+    Sentinel pipeline with the original threat context, and the new record
+    links to its predecessor via ``parent_id``.
+
+    Args:
+        playbook_id: Database ID of the playbook to regenerate.
+        body: RegenerateRequest with reason string.
+        background_tasks: Injected background tasks manager.
+        db: Injected database session.
+
+    Returns:
+        Dict with keys: status, message, new_playbook (detail), old_version, new_version.
+
+    Raises:
+        HTTPException 404: If the original playbook is not found.
+        HTTPException 500: On pipeline failure.
+    """
+    try:
+        svc = SentinelService(db)
+        new_playbook = svc.regenerate_playbook(
+            original_playbook_id=playbook_id,
+            reason=body.reason,
+            background_tasks=background_tasks,
+        )
+
+        return {
+            "status": "success",
+            "message": (
+                f"Playbook regenerated successfully. "
+                f"New version: v{new_playbook.version} "
+                f"(playbook_id={new_playbook.playbook_id})"
+            ),
+            "new_playbook": _serialize_playbook_detail(new_playbook),
+            "old_playbook_id": playbook_id,
+            "new_version": new_playbook.version,
+            "parent_id": new_playbook.parent_id,
+        }
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    except Exception as exc:
+        logger.error("Playbook regeneration failed for id=%d: %s", playbook_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Playbook regeneration failed: {str(exc)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 17. GET /api/sentinel/playbooks/{id}/versions — Version history for a playbook
+# ---------------------------------------------------------------------------
+
+@router.get("/playbooks/{playbook_id}/versions", response_model=Dict[str, Any])
+def get_playbook_versions(
+    playbook_id: int = Path(..., ge=1, description="Database ID of any version in the playbook chain"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Retrieve the full version history for a playbook lineage.
+
+    Given the database ID of *any* version in a playbook chain, returns
+    all versions ordered from newest to oldest.
+
+    Args:
+        playbook_id: Database ID of any version in the chain.
+        db: Injected database session.
+
+    Returns:
+        Dict with keys: status, total_versions, current_version, versions[].
+
+    Raises:
+        HTTPException 404: If the playbook is not found.
+        HTTPException 500: On unexpected database errors.
+    """
+    try:
+        # Verify the playbook exists
+        row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == playbook_id).first()
+        if not row:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Playbook with id={playbook_id} not found",
+            )
+
+        # Retrieve full version history
+        history = SentinelPlaybook.get_version_history(
+            db, parent_chain_id=playbook_id
+        )
+
+        # Find the current (latest) version
+        current = next((r for r in history if r.is_latest), history[0] if history else None)
+
+        return {
+            "status": "success",
+            "total_versions": len(history),
+            "current_version": current.version if current else None,
+            "current_playbook_id": current.playbook_id if current else None,
+            "versions": [
+                {
+                    "id": r.id,
+                    "playbook_id": r.playbook_id,
+                    "version": r.version,
+                    "is_latest": r.is_latest,
+                    "parent_id": r.parent_id,
+                    "regeneration_reason": r.regeneration_reason,
+                    "status": r.status,
+                    "created_at": r.created_at.isoformat() if r.created_at else None,
+                    "attack_type": r.attack_type,
+                    "severity": r.severity,
+                    "confidence_score": r.confidence_score,
+                }
+                for r in history
+            ],
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error("Failed to retrieve version history for id=%d: %s", playbook_id, exc)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve version history: {str(exc)}",
+        )
+

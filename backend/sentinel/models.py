@@ -14,10 +14,13 @@ Import this module BEFORE ``Base.metadata.create_all()`` is called in
 ``backend/main.py`` so SQLAlchemy sees the model and creates the table.
 This is already wired in main.py under the Sentinel Models section.
 
-SentinelPlaybook Schema (23 columns)
+SentinelPlaybook Schema (27 columns)
 -------------------------------------
   Core Identity (4)
     id, created_at, updated_at, playbook_id
+
+  Version Tracking (4)
+    version, parent_id, is_latest, regeneration_reason
 
   Threat Context (7)
     src_ip, dst_port, protocol, attack_type, threat_score,
@@ -48,11 +51,12 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("sentinel.models")
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 # Import the shared declarative Base so this model is registered in the same
 # metadata as all other PhantomNet ORM models.  This is required for
@@ -112,6 +116,53 @@ class SentinelPlaybook(Base):
         onupdate=datetime.utcnow,
         nullable=False,
         comment="UTC timestamp of last modification; auto-updated on save",
+    )
+
+    # ── 1b. Version Tracking ─────────────────────────────────────────────
+    #   version              : Monotonically increasing revision number (1-based).
+    #   parent_id            : FK to the previous version's row (NULL for v1).
+    #   is_latest            : True only for the most current revision of a
+    #                          playbook lineage. Dashboard queries filter on
+    #                          this to avoid showing superseded versions.
+    #   regeneration_reason  : Human-readable reason for regeneration (audit).
+
+    version = Column(
+        Integer,
+        nullable=False,
+        default=1,
+        comment="Revision number for this playbook (1 = original, 2+ = regenerated)",
+    )
+
+    parent_id = Column(
+        Integer,
+        ForeignKey("sentinel_playbooks.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        comment="FK to the previous version's row ID (NULL for first version)",
+    )
+
+    is_latest = Column(
+        Boolean,
+        nullable=False,
+        default=True,
+        index=True,
+        comment="True if this is the most recent version of the playbook lineage",
+    )
+
+    regeneration_reason = Column(
+        String(512),
+        nullable=True,
+        default=None,
+        comment="Reason for regeneration, e.g. 'Updated threat intelligence' or 'Analyst-requested refresh'",
+    )
+
+    # Self-referential relationship for version chain navigation
+    parent = relationship(
+        "SentinelPlaybook",
+        remote_side=[id],
+        backref="child_versions",
+        foreign_keys=[parent_id],
     )
 
     # ΓöÇΓöÇ 2. Threat Context ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -284,17 +335,20 @@ class SentinelPlaybook(Base):
 
     # ΓöÇΓöÇ Helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
+    # ── Helpers ────────────────────────────────────────────────────────────
+
     def __repr__(self) -> str:  # pragma: no cover
         """Return a developer-friendly string representation of the playbook record."""
         return (
             f"<SentinelPlaybook id={self.id} playbook_id={self.playbook_id!r} "
-            f"attack_type={self.attack_type!r} confidence={self.confidence_score} "
-            f"severity={self.severity!r} status={self.status!r}>"
+            f"v{self.version} attack_type={self.attack_type!r} "
+            f"confidence={self.confidence_score} severity={self.severity!r} "
+            f"status={self.status!r} is_latest={self.is_latest}>"
         )
 
     def to_dict(self) -> Dict[str, Any]:
         """
-        Serialize all 23 columns to a plain dictionary.
+        Serialize all 27 columns to a plain dictionary.
 
         Used by the REST API (api/sentinel.py) to build JSON responses without
         importing Pydantic schemas in the model layer.
@@ -308,6 +362,11 @@ class SentinelPlaybook(Base):
             "playbook_id":      self.playbook_id,
             "created_at":       self.created_at.isoformat() if self.created_at else None,
             "updated_at":       self.updated_at.isoformat() if self.updated_at else None,
+            # Version Tracking
+            "version":              self.version,
+            "parent_id":            self.parent_id,
+            "is_latest":            self.is_latest,
+            "regeneration_reason":  self.regeneration_reason,
             # Threat Context
             "src_ip":           self.src_ip,
             "dst_port":         self.dst_port,
@@ -334,3 +393,108 @@ class SentinelPlaybook(Base):
             "reviewed_by":      self.reviewed_by,
             "reviewed_at":      self.reviewed_at.isoformat() if self.reviewed_at else None,
         }
+
+    # ── Version History Queries ────────────────────────────────────────────
+
+    @classmethod
+    def get_version_history(
+        cls,
+        db,
+        playbook_id: Optional[str] = None,
+        parent_chain_id: Optional[int] = None,
+    ) -> List["SentinelPlaybook"]:
+        """Retrieve the full version history for a playbook lineage.
+
+        Walks the ``parent_id`` chain to collect all versions of a playbook,
+        ordered from newest to oldest.
+
+        Args:
+            db: Active SQLAlchemy session.
+            playbook_id: Human-readable playbook_id of *any* version in the
+                chain.  The method resolves the root and retrieves all
+                descendants.
+            parent_chain_id: Database ``id`` of any row in the chain.  Used
+                as an alternative to *playbook_id* when the caller has the
+                integer PK.
+
+        Returns:
+            List of SentinelPlaybook rows ordered by ``version`` descending
+            (newest first).
+        """
+        if playbook_id is None and parent_chain_id is None:
+            raise ValueError("Provide either playbook_id or parent_chain_id")
+
+        # Find the starting row
+        if playbook_id is not None:
+            start = db.query(cls).filter(cls.playbook_id == playbook_id).first()
+        else:
+            start = db.query(cls).filter(cls.id == parent_chain_id).first()
+
+        if start is None:
+            return []
+
+        # Walk UP to the root (v1)
+        root = start
+        while root.parent_id is not None:
+            parent_row = db.query(cls).filter(cls.id == root.parent_id).first()
+            if parent_row is None:
+                break
+            root = parent_row
+
+        # Collect ALL versions via recursive descent from root
+        collected = [root]
+        queue = [root.id]
+        while queue:
+            current_id = queue.pop(0)
+            children = (
+                db.query(cls)
+                .filter(cls.parent_id == current_id)
+                .order_by(cls.version.asc())
+                .all()
+            )
+            for child in children:
+                collected.append(child)
+                queue.append(child.id)
+
+        # Sort newest first
+        collected.sort(key=lambda r: r.version, reverse=True)
+        return collected
+
+    @classmethod
+    def get_latest_version(
+        cls,
+        db,
+        parent_chain_id: int,
+    ) -> Optional["SentinelPlaybook"]:
+        """Return the latest version of a playbook by walking from any row.
+
+        Args:
+            db: Active SQLAlchemy session.
+            parent_chain_id: Database ``id`` of any row in the version chain.
+
+        Returns:
+            The SentinelPlaybook row with ``is_latest=True`` in the chain,
+            or None if not found.
+        """
+        # First, try the fast path: walk up to root, then find is_latest=True
+        start = db.query(cls).filter(cls.id == parent_chain_id).first()
+        if start is None:
+            return None
+
+        # Walk up to root
+        root = start
+        while root.parent_id is not None:
+            parent_row = db.query(cls).filter(cls.id == root.parent_id).first()
+            if parent_row is None:
+                break
+            root = parent_row
+
+        # From root, find the one with is_latest=True
+        history = cls.get_version_history(db, parent_chain_id=root.id)
+        for row in history:
+            if row.is_latest:
+                return row
+
+        # Fallback: return the highest version
+        return history[0] if history else None
+
