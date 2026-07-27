@@ -3,7 +3,7 @@ backend/api/sentinel.py
 -------------------------
 PhantomNet Sentinel Layer — REST API Endpoints
 
-Provides 13 endpoints for the Sentinel Dashboard:
+Provides 15 endpoints for the Sentinel Dashboard:
 
   GET   /api/sentinel/playbooks              — List all playbooks (paginated)
   GET   /api/sentinel/playbooks/{id}         — Get single playbook by ID
@@ -13,6 +13,8 @@ Provides 13 endpoints for the Sentinel Dashboard:
   POST  /api/sentinel/generate               — Trigger manual playbook generation
   PATCH /api/sentinel/playbooks/{id}/approve — Approve a playbook
   PATCH /api/sentinel/playbooks/{id}/reject  — Reject a playbook
+  POST  /api/sentinel/playbooks/batch/approve — Batch approve playbooks
+  POST  /api/sentinel/playbooks/batch/reject  — Batch reject playbooks
   POST  /api/sentinel/playbooks/{id}/export  — Export playbook as file download
   GET   /api/sentinel/rules/snort            — List all Snort rules
   GET   /api/sentinel/rules/sigma            — List all Sigma rules
@@ -24,6 +26,7 @@ Tags: ['Sentinel']
 
 Week 14, Day 2 + Day 3 — Integration & API
 Week 18, Day 3 — MITRE ATT&CK Matrix endpoint
+Week 19, Day 1 — Batch Approve and Reject API Endpoints
 """
 
 from __future__ import annotations
@@ -118,6 +121,26 @@ class GenerateResponse(BaseModel):
 
 class ReviewRequest(BaseModel):
     """Request body for PATCH /approve and /reject endpoints."""
+    reviewed_by: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="Username of the analyst performing the review",
+    )
+
+    @field_validator("reviewed_by")
+    @classmethod
+    def validate_reviewed_by(cls, v: str) -> str:
+        """Strip whitespace and reject empty reviewed_by values."""
+        v = v.strip()
+        if not v:
+            raise ValueError("reviewed_by must not be empty or whitespace")
+        return v
+
+
+class BatchReviewRequest(BaseModel):
+    """Request body for POST /batch/approve and /batch/reject endpoints."""
+    playbook_ids: List[int] = Field(..., min_length=1, description="List of playbook IDs to process")
     reviewed_by: str = Field(
         ...,
         min_length=1,
@@ -1025,3 +1048,111 @@ def get_mitre_matrix(db: Session = Depends(get_db)) -> Dict[str, Any]:
             status_code=500,
             detail=f"Failed to fetch MITRE matrix data: {str(exc)}",
         )
+
+
+# ---------------------------------------------------------------------------
+# 14. POST /api/sentinel/playbooks/batch/approve — Batch approve playbooks
+# ---------------------------------------------------------------------------
+
+@router.post("/playbooks/batch/approve", response_model=Dict[str, Any])
+def batch_approve_playbooks(
+    body: BatchReviewRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Batch approve multiple Sentinel playbooks.
+
+    Processes a list of playbook IDs. Valid playbooks (status 'pending' or 'rejected')
+    are approved. Invalid ones are recorded as failed.
+
+    Args:
+        body: BatchReviewRequest with playbook_ids and reviewed_by username.
+        db: Injected database session.
+
+    Returns:
+        Dict with status, message, and detailed results of successful/failed IDs.
+    """
+    results = {"successful": [], "failed": []}
+    
+    for pb_id in body.playbook_ids:
+        try:
+            row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == pb_id).first()
+            if not row:
+                results["failed"].append({"id": pb_id, "error": "Not found"})
+                continue
+                
+            if row.status not in ("pending", "rejected"):
+                results["failed"].append({"id": pb_id, "error": f"Invalid status: {row.status}"})
+                continue
+                
+            row.status = "approved"
+            row.reviewed_by = body.reviewed_by
+            row.reviewed_at = datetime.utcnow()
+            db.commit()
+            
+            results["successful"].append(pb_id)
+            logger.info("Playbook id=%d approved in batch by %s", pb_id, body.reviewed_by)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Failed to approve playbook id=%d in batch: %s", pb_id, exc)
+            results["failed"].append({"id": pb_id, "error": str(exc)})
+            
+    return {
+        "status": "success",
+        "message": f"Processed {len(body.playbook_ids)} playbooks. {len(results['successful'])} successful, {len(results['failed'])} failed.",
+        "results": results
+    }
+
+
+# ---------------------------------------------------------------------------
+# 15. POST /api/sentinel/playbooks/batch/reject — Batch reject playbooks
+# ---------------------------------------------------------------------------
+
+@router.post("/playbooks/batch/reject", response_model=Dict[str, Any])
+def batch_reject_playbooks(
+    body: BatchReviewRequest,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Batch reject multiple Sentinel playbooks.
+
+    Processes a list of playbook IDs. Valid playbooks (status 'pending' or 'approved')
+    are rejected. Invalid ones are recorded as failed.
+
+    Args:
+        body: BatchReviewRequest with playbook_ids and reviewed_by username.
+        db: Injected database session.
+
+    Returns:
+        Dict with status, message, and detailed results of successful/failed IDs.
+    """
+    results = {"successful": [], "failed": []}
+    
+    for pb_id in body.playbook_ids:
+        try:
+            row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == pb_id).first()
+            if not row:
+                results["failed"].append({"id": pb_id, "error": "Not found"})
+                continue
+                
+            if row.status not in ("pending", "approved"):
+                results["failed"].append({"id": pb_id, "error": f"Invalid status: {row.status}"})
+                continue
+                
+            row.status = "rejected"
+            row.reviewed_by = body.reviewed_by
+            row.reviewed_at = datetime.utcnow()
+            db.commit()
+            
+            results["successful"].append(pb_id)
+            logger.info("Playbook id=%d rejected in batch by %s", pb_id, body.reviewed_by)
+        except Exception as exc:
+            db.rollback()
+            logger.error("Failed to reject playbook id=%d in batch: %s", pb_id, exc)
+            results["failed"].append({"id": pb_id, "error": str(exc)})
+            
+    return {
+        "status": "success",
+        "message": f"Processed {len(body.playbook_ids)} playbooks. {len(results['successful'])} successful, {len(results['failed'])} failed.",
+        "results": results
+    }
