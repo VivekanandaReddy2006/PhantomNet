@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter } from "react-icons/fa";
+import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter, FaSearch } from "react-icons/fa";
 import PlaybookList from "../components/sentinel/PlaybookList";
 import MitreTag from "../components/sentinel/MitreTag";
 import MitreMatrix from "../components/sentinel/MitreMatrix";
@@ -156,6 +156,35 @@ const SentinelDashboard = () => {
   /* ── Toast Notifications ── */
   const { toasts, addToast, removeToast } = useToast();
 
+  /* ── Search & Filter State ── */
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedSeverity, setSelectedSeverity] = useState("all");
+  const [selectedTechnique, setSelectedTechnique] = useState("all");
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Sync selectedMatrixTechnique (mitre matrix/tags click) to dropdown filter
+  useEffect(() => {
+    if (selectedMatrixTechnique) {
+      setSelectedTechnique(selectedMatrixTechnique.id);
+    } else {
+      setSelectedTechnique("all");
+    }
+  }, [selectedMatrixTechnique]);
+
+  // Reset page number on search keyword or severity updates
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, selectedSeverity]);
+
+
   const fetchMatrixData = async () => {
     setMatrixLoading(true);
     setMatrixError(null);
@@ -179,7 +208,14 @@ const SentinelDashboard = () => {
     }
   };
 
-  const fetchData = async (page = currentPage, pageSize = perPage, tab = activeTab) => {
+  const fetchData = async (
+    page = currentPage,
+    pageSize = perPage,
+    tab = activeTab,
+    severity = selectedSeverity,
+    technique = selectedTechnique,
+    search = debouncedSearch
+  ) => {
     setLoading(true);
     setError(null);
     try {
@@ -189,7 +225,12 @@ const SentinelDashboard = () => {
       else if (tab === "approved") backendStatus = "approved";
       else if (tab === "rejected") backendStatus = "rejected";
 
-      const url = `/api/sentinel/playbooks?page=${page}&per_page=${pageSize}${backendStatus ? `&status=${backendStatus}` : ""}`;
+      let url = `/api/sentinel/playbooks?page=${page}&per_page=${pageSize}`;
+      if (backendStatus) url += `&status=${backendStatus}`;
+      if (severity && severity !== "all") url += `&severity=${severity}`;
+      if (technique && technique !== "all") url += `&technique_id=${technique}`;
+      if (search && search.trim()) url += `&q=${encodeURIComponent(search.trim())}`;
+
       const playbooksRes = await fetch(url);
       const playbooksData = await playbooksRes.json();
       if (!playbooksRes.ok) {
@@ -271,14 +312,37 @@ const SentinelDashboard = () => {
   };
 
   useEffect(() => {
-    fetchData(currentPage, perPage, activeTab);
+    fetchData(currentPage, perPage, activeTab, selectedSeverity, selectedTechnique, debouncedSearch);
     fetchMatrixData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, perPage, activeTab]);
+  }, [currentPage, perPage, activeTab, selectedSeverity, selectedTechnique, debouncedSearch]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     setCurrentPage(1);
+  };
+
+  const handleSeverityChange = (e) => {
+    setSelectedSeverity(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleTechniqueChange = (e) => {
+    const val = e.target.value;
+    setSelectedTechnique(val);
+    setCurrentPage(1);
+    if (val === "all") {
+      setSelectedMatrixTechnique(null);
+    } else {
+      const found = techniques.find((t) => t.techniqueId === val);
+      if (found) {
+        setSelectedMatrixTechnique({
+          id: found.techniqueId,
+          name: found.techniqueName,
+          tacticId: found.tactic,
+        });
+      }
+    }
   };
 
   // Normalization logic
@@ -303,15 +367,8 @@ const SentinelDashboard = () => {
     }
   }, [addToast]);
 
-  // Filter playbooks based on tab selection & MITRE technique matrix selection
-  const filteredPlaybooks = useMemo(() => {
-    if (!selectedMatrixTechnique) return playbooks;
-    const targetId = selectedMatrixTechnique.id;
-    return playbooks.filter((pb) => {
-      if (!pb.technique_id) return false;
-      return pb.technique_id === targetId || pb.technique_id.startsWith(targetId);
-    });
-  }, [playbooks, selectedMatrixTechnique]);
+  // Playbooks are filtered backend-side
+  const filteredPlaybooks = playbooks;
 
   /* ── Sort toggle handler ── */
   const handleSortClick = useCallback((column) => {
@@ -647,6 +704,78 @@ const SentinelDashboard = () => {
               >
                 Rejected <span className="tab-count">{counts.rejected}</span>
               </button>
+            </div>
+
+            {/* Search and Filters Toolbar */}
+            <div className="sentinel-filters-toolbar hud-font">
+              {/* Keyword Search */}
+              <div className="filter-group search-group">
+                <FaSearch className="search-icon" />
+                <input
+                  type="text"
+                  className="hud-search-input"
+                  placeholder="SEARCH PLAYBOOKS..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button 
+                    className="clear-search-btn" 
+                    onClick={() => setSearchTerm("")}
+                    title="Clear search"
+                  >
+                    <FaTimes />
+                  </button>
+                )}
+              </div>
+
+              {/* Severity Filter Dropdown */}
+              <div className="filter-group">
+                <span className="filter-label">SEVERITY:</span>
+                <select
+                  className="hud-filter-select"
+                  value={selectedSeverity}
+                  onChange={handleSeverityChange}
+                >
+                  <option value="all">ALL SEVERITIES</option>
+                  <option value="critical">CRITICAL</option>
+                  <option value="high">HIGH</option>
+                  <option value="medium">MEDIUM</option>
+                  <option value="low">LOW</option>
+                </select>
+              </div>
+
+              {/* Status Filter Dropdown */}
+              <div className="filter-group">
+                <span className="filter-label">STATUS:</span>
+                <select
+                  className="hud-filter-select"
+                  value={activeTab}
+                  onChange={(e) => handleTabChange(e.target.value)}
+                >
+                  <option value="all">ALL STATUSES</option>
+                  <option value="draft">DRAFT</option>
+                  <option value="approved">APPROVED</option>
+                  <option value="rejected">REJECTED</option>
+                </select>
+              </div>
+
+              {/* MITRE Technique Filter Dropdown */}
+              <div className="filter-group">
+                <span className="filter-label">TECHNIQUE:</span>
+                <select
+                  className="hud-filter-select technique-select"
+                  value={selectedTechnique}
+                  onChange={handleTechniqueChange}
+                >
+                  <option value="all">ALL TECHNIQUES</option>
+                  {techniques.map((tech) => (
+                    <option key={tech.techniqueId} value={tech.techniqueId}>
+                      {tech.techniqueId} - {tech.techniqueName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* ── Sort Header Bar ── */}
