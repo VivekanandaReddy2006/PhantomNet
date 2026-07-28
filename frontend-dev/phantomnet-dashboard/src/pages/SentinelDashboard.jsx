@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter } from "react-icons/fa";
-import PlaybookCard from "../components/sentinel/PlaybookCard";
+import PlaybookList from "../components/sentinel/PlaybookList";
 import MitreTag from "../components/sentinel/MitreTag";
 import MitreMatrix from "../components/sentinel/MitreMatrix";
 import RulePreview from "../components/sentinel/RulePreview";
@@ -723,20 +723,12 @@ const SentinelDashboard = () => {
                 )}
               </div>
             ) : (
-              <div className="sentinel-playbook-grid">
-                {sortedPlaybooks.map((pb) => (
-                  <PlaybookCard
-                    key={pb.id}
-                    title={pb.playbook_name || "Untitled Playbook"}
-                    severity={getPlaybookSeverity(pb)}
-                    technique={pb.technique_id || "T0000"}
-                    status={getNormalizedStatus(pb.status)}
-                    date={pb.created_at ? pb.created_at.substring(0, 10) : "—"}
-                    eventCount={Math.floor((pb.threat_score || 50) * 1.5) || 1}
-                    onClick={() => handleCardClick(pb)}
-                  />
-                ))}
-              </div>
+              <PlaybookList
+                playbooks={sortedPlaybooks}
+                onPlaybookClick={handleCardClick}
+                refreshData={() => fetchData(currentPage, perPage, activeTab)}
+                addToast={addToast}
+              />
             )}
 
             {/* Pagination Controls */}
