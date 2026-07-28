@@ -257,9 +257,11 @@ def list_playbooks(
     per_page: int = Query(default=20, ge=1, le=100, description="Results per page (1–100, default 20)"),
     status: Optional[str] = Query(default=None, description="Filter by status: pending|approved|rejected|exported"),
     attack_type: Optional[str] = Query(default=None, description="Filter by attack type"),
-    technique_id: Optional[str] = Query(default=None, description="Filter by MITRE technique ID"),
+    technique: Optional[str] = Query(default=None, description="Filter by MITRE technique ID or Name"),
     severity: Optional[str] = Query(default=None, description="Filter by severity: critical|high|medium|low"),
-    q: Optional[str] = Query(default=None, description="Keyword search query"),
+    search: Optional[str] = Query(default=None, description="Keyword search query"),
+    date_from: Optional[str] = Query(default=None, description="Filter by creation date (start) ISO-8601"),
+    date_to: Optional[str] = Query(default=None, description="Filter by creation date (end) ISO-8601"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -270,9 +272,11 @@ def list_playbooks(
         per_page: Results per page, 1-100 (default 20).
         status: Filter by workflow status (pending|approved|rejected|exported).
         attack_type: Filter by attack classification label.
-        technique_id: Filter by MITRE technique ID.
+        technique: Filter by MITRE technique ID or name.
         severity: Filter by severity (critical|high|medium|low).
-        q: Search keyword query matching ID, name, technique, IP, or attack type.
+        search: Search keyword query matching ID, name, technique, IP, or attack type.
+        date_from: Filter by creation date (start) ISO-8601.
+        date_to: Filter by creation date (end) ISO-8601.
         db: Injected database session.
 
     Returns:
@@ -292,11 +296,11 @@ def list_playbooks(
                 query = query.filter(SentinelPlaybook.status == status_val)
         if attack_type is not None and attack_type.strip():
             query = query.filter(SentinelPlaybook.attack_type == attack_type.strip())
-        if technique_id is not None and technique_id.strip():
-            tech_val = technique_id.strip()
+        if technique is not None and technique.strip():
+            tech_val = technique.strip()
             query = query.filter(
-                (SentinelPlaybook.technique_id == tech_val) |
-                (SentinelPlaybook.technique_id.like(f"{tech_val}.%"))
+                (SentinelPlaybook.technique_id.ilike(f"%{tech_val}%")) |
+                (SentinelPlaybook.technique_name.ilike(f"%{tech_val}%"))
             )
         if severity is not None and severity.strip():
             sev_val = severity.strip().upper()
@@ -308,16 +312,28 @@ def list_playbooks(
                 query = query.filter((SentinelPlaybook.severity == "MEDIUM") | ((SentinelPlaybook.threat_score >= 40) & (SentinelPlaybook.threat_score < 70)))
             elif sev_val == "LOW":
                 query = query.filter((SentinelPlaybook.severity == "LOW") | (SentinelPlaybook.threat_score < 40))
-        if q is not None and q.strip():
-            search_val = f"%{q.strip()}%"
+        if search is not None and search.strip():
+            search_val = f"%{search.strip()}%"
             query = query.filter(
-                (SentinelPlaybook.playbook_id.like(search_val)) |
-                (SentinelPlaybook.playbook_name.like(search_val)) |
-                (SentinelPlaybook.technique_id.like(search_val)) |
-                (SentinelPlaybook.technique_name.like(search_val)) |
-                (SentinelPlaybook.src_ip.like(search_val)) |
-                (SentinelPlaybook.attack_type.like(search_val))
+                (SentinelPlaybook.playbook_id.ilike(search_val)) |
+                (SentinelPlaybook.playbook_name.ilike(search_val)) |
+                (SentinelPlaybook.technique_id.ilike(search_val)) |
+                (SentinelPlaybook.technique_name.ilike(search_val)) |
+                (SentinelPlaybook.src_ip.ilike(search_val)) |
+                (SentinelPlaybook.attack_type.ilike(search_val))
             )
+        if date_from is not None and date_from.strip():
+            try:
+                dt_from = datetime.fromisoformat(date_from.strip().replace('Z', '+00:00'))
+                query = query.filter(SentinelPlaybook.created_at >= dt_from)
+            except ValueError:
+                pass
+        if date_to is not None and date_to.strip():
+            try:
+                dt_to = datetime.fromisoformat(date_to.strip().replace('Z', '+00:00'))
+                query = query.filter(SentinelPlaybook.created_at <= dt_to)
+            except ValueError:
+                pass
 
         total = query.count()
 
