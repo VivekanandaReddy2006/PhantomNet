@@ -258,6 +258,8 @@ def list_playbooks(
     status: Optional[str] = Query(default=None, description="Filter by status: pending|approved|rejected|exported"),
     attack_type: Optional[str] = Query(default=None, description="Filter by attack type"),
     technique_id: Optional[str] = Query(default=None, description="Filter by MITRE technique ID"),
+    severity: Optional[str] = Query(default=None, description="Filter by severity: critical|high|medium|low"),
+    q: Optional[str] = Query(default=None, description="Keyword search query"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -269,6 +271,8 @@ def list_playbooks(
         status: Filter by workflow status (pending|approved|rejected|exported).
         attack_type: Filter by attack classification label.
         technique_id: Filter by MITRE technique ID.
+        severity: Filter by severity (critical|high|medium|low).
+        q: Search keyword query matching ID, name, technique, IP, or attack type.
         db: Injected database session.
 
     Returns:
@@ -293,6 +297,26 @@ def list_playbooks(
             query = query.filter(
                 (SentinelPlaybook.technique_id == tech_val) |
                 (SentinelPlaybook.technique_id.like(f"{tech_val}.%"))
+            )
+        if severity is not None and severity.strip():
+            sev_val = severity.strip().upper()
+            if sev_val == "CRITICAL":
+                query = query.filter((SentinelPlaybook.severity == "CRITICAL") | (SentinelPlaybook.threat_score >= 90))
+            elif sev_val == "HIGH":
+                query = query.filter((SentinelPlaybook.severity == "HIGH") | ((SentinelPlaybook.threat_score >= 70) & (SentinelPlaybook.threat_score < 90)))
+            elif sev_val == "MEDIUM":
+                query = query.filter((SentinelPlaybook.severity == "MEDIUM") | ((SentinelPlaybook.threat_score >= 40) & (SentinelPlaybook.threat_score < 70)))
+            elif sev_val == "LOW":
+                query = query.filter((SentinelPlaybook.severity == "LOW") | (SentinelPlaybook.threat_score < 40))
+        if q is not None and q.strip():
+            search_val = f"%{q.strip()}%"
+            query = query.filter(
+                (SentinelPlaybook.playbook_id.like(search_val)) |
+                (SentinelPlaybook.playbook_name.like(search_val)) |
+                (SentinelPlaybook.technique_id.like(search_val)) |
+                (SentinelPlaybook.technique_name.like(search_val)) |
+                (SentinelPlaybook.src_ip.like(search_val)) |
+                (SentinelPlaybook.attack_type.like(search_val))
             )
 
         total = query.count()
