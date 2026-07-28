@@ -140,6 +140,13 @@ async def lifespan(_app: FastAPI):
         scheduler_service.load_schedules()
         print("Scheduled Reports Loader Started")
 
+        # Start Sentinel Auto-Generation Scheduler (APScheduler-based, opt-in)
+        _auto_gen_started = scheduler_service.start_sentinel_auto_gen()
+        if _auto_gen_started:
+            print("[OK] Sentinel Auto-Gen Scheduler started (APScheduler interval job)")
+        else:
+            print("[--] Sentinel Auto-Gen Scheduler disabled (SENTINEL_AUTO_GEN_ENABLED=false)")
+
         # Start Real-Time Metrics Broadcaster
         asyncio.create_task(broadcast_live_metrics())
         # Start PCAP Retention Cleanup (daily)
@@ -165,6 +172,7 @@ async def lifespan(_app: FastAPI):
 
     yield
     print("PhantomNet Shutting Down")
+    scheduler_service.stop_sentinel_auto_gen()
     threat_analyzer.stop()
 
 
