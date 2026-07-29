@@ -413,21 +413,21 @@ def get_sentinel_stats(
     """
     Return Sentinel pipeline statistics.
 
-    Includes total playbook count and breakdown by status
-    (pending, approved, rejected, exported).
+    Includes total playbook count, breakdown by status, severity distributions,
+    average confidence and threat scores, approval rates, and daily generation trends.
 
     Args:
         db: Injected database session.
 
     Returns:
-        Dict with keys: status, total_playbooks, pending, approved,
-        rejected, exported, avg_threat_score, latest_playbook_at,
-        top_attack_types.
+        Dict containing aggregated summary statistics.
 
     Raises:
         HTTPException 500: On unexpected database errors.
     """
     try:
+        from sqlalchemy import cast, Date
+
         total = db.query(func.count(SentinelPlaybook.id)).scalar() or 0
 
         # Count by status
@@ -438,9 +438,26 @@ def get_sentinel_stats(
         )
         status_map = {status: count for status, count in status_counts}
 
+        approved_count = status_map.get("approved", 0)
+        rejected_count = status_map.get("rejected", 0)
+        resolved_count = approved_count + rejected_count
+        approval_rate = round((approved_count / resolved_count) * 100, 2) if resolved_count > 0 else 0.0
+
+        # Severity distributions
+        severity_counts = (
+            db.query(SentinelPlaybook.severity, func.count(SentinelPlaybook.id))
+            .group_by(SentinelPlaybook.severity)
+            .all()
+        )
+        severity_map = {sev: count for sev, count in severity_counts if sev}
+
         # Average threat score
         avg_score = db.query(func.avg(SentinelPlaybook.threat_score)).scalar()
         avg_score = round(float(avg_score), 2) if avg_score else 0.0
+
+        # Average confidence score
+        avg_confidence = db.query(func.avg(SentinelPlaybook.confidence_score)).scalar()
+        avg_confidence = round(float(avg_confidence), 3) if avg_confidence else 0.0
 
         # Latest playbook timestamp
         latest = (
@@ -459,18 +476,31 @@ def get_sentinel_stats(
             .all()
         )
 
+        # Daily generation counts
+        daily_counts = (
+            db.query(cast(SentinelPlaybook.created_at, Date), func.count(SentinelPlaybook.id))
+            .group_by(cast(SentinelPlaybook.created_at, Date))
+            .order_by(cast(SentinelPlaybook.created_at, Date).asc())
+            .all()
+        )
+        generation_trends = [{"date": str(d), "count": c} for d, c in daily_counts if d]
+
         return {
             "status": "success",
             "total_playbooks": total,
             "pending": status_map.get("pending", 0),
-            "approved": status_map.get("approved", 0),
-            "rejected": status_map.get("rejected", 0),
+            "approved": approved_count,
+            "rejected": rejected_count,
             "exported": status_map.get("exported", 0),
+            "approval_rate": approval_rate,
+            "severity_distribution": severity_map,
             "avg_threat_score": avg_score,
+            "avg_confidence_score": avg_confidence,
             "latest_playbook_at": latest_at,
             "top_attack_types": [
                 {"attack_type": at, "count": c} for at, c in top_attacks
             ],
+            "generation_trends": generation_trends,
         }
     except Exception as exc:
         logger.error("Failed to compute sentinel stats: %s", exc)
