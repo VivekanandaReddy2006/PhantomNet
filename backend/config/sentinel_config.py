@@ -99,3 +99,59 @@ SENTINEL_LLM_HOST: str = os.getenv("SENTINEL_LLM_HOST", "http://ollama:11434")
 
 SENTINEL_LLM_MODEL: str = os.getenv("SENTINEL_LLM_MODEL", "mistral")
 """LLM model name pulled inside Ollama."""
+
+
+# ---------------------------------------------------------------------------
+# Email Alert Notification Configuration
+# ---------------------------------------------------------------------------
+
+SENTINEL_EMAIL_ALERTS_ENABLED: bool = _env_bool("SENTINEL_EMAIL_ALERTS_ENABLED", default=False)
+"""
+When True, email notifications are sent for playbooks that meet or exceed
+the configured severity threshold.
+
+Default: False (opt-in via environment variable).
+"""
+
+SENTINEL_EMAIL_SMTP_HOST: str = os.getenv("SENTINEL_EMAIL_SMTP_HOST", "localhost")
+"""SMTP server hostname for sending alert emails."""
+
+SENTINEL_EMAIL_SMTP_PORT: int = _env_int("SENTINEL_EMAIL_SMTP_PORT", default=587)
+"""SMTP server port (587 for STARTTLS, 465 for SSL, 25 for unencrypted)."""
+
+SENTINEL_EMAIL_SMTP_USER: str = os.getenv("SENTINEL_EMAIL_SMTP_USER", "")
+"""SMTP authentication username. Leave empty for unauthenticated relay."""
+
+SENTINEL_EMAIL_SMTP_PASSWORD: str = os.getenv("SENTINEL_EMAIL_SMTP_PASSWORD", "")
+"""SMTP authentication password."""
+
+SENTINEL_EMAIL_SMTP_USE_TLS: bool = _env_bool("SENTINEL_EMAIL_SMTP_USE_TLS", default=True)
+"""Enable STARTTLS encryption for SMTP connections."""
+
+SENTINEL_EMAIL_FROM_ADDRESS: str = os.getenv(
+    "SENTINEL_EMAIL_FROM_ADDRESS", "sentinel@phantomnet.local"
+)
+"""Sender (From) email address for alert notifications."""
+
+_raw_recipients = os.getenv("SENTINEL_EMAIL_RECIPIENTS", "")
+SENTINEL_EMAIL_RECIPIENTS: list = [
+    r.strip() for r in _raw_recipients.split(",") if r.strip()
+]
+"""
+Comma-separated list of recipient email addresses for alert notifications.
+Example: admin@example.com,soc-team@example.com
+"""
+
+SENTINEL_EMAIL_SEVERITY_THRESHOLD: str = os.getenv(
+    "SENTINEL_EMAIL_SEVERITY_THRESHOLD", "CRITICAL"
+).upper()
+"""
+Minimum severity level to trigger email alerts.
+Valid values: CRITICAL, HIGH, MEDIUM, LOW.
+Default: CRITICAL (only the most critical playbooks trigger emails).
+"""
+
+SENTINEL_DASHBOARD_BASE_URL: str = os.getenv(
+    "SENTINEL_DASHBOARD_BASE_URL", "http://localhost:3000"
+)
+"""Base URL for constructing dashboard deep links in alert emails."""

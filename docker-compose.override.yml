@@ -1,0 +1,10 @@
+## CPU-only fallback — disables NVIDIA GPU requirement
+## Use this when no NVIDIA GPU is available or WSL2 GPU pass-through is not configured
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices: []
+        limits:
+          memory: 8G

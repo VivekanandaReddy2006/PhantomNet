@@ -865,6 +865,19 @@ class SentinelService:
                     "Step 8b - Failed to trigger LLM narrative summary: %s",
                     llm_exc,
                 )
+
+            # ── Step 8c: Trigger email alert for CRITICAL/HIGH playbooks ──
+            # Dispatches an async email notification when severity meets the
+            # configured threshold.  Runs in a background thread to avoid
+            # blocking the pipeline.
+            try:
+                from sentinel.email_notifier import trigger_email_alert_async
+                trigger_email_alert_async(playbook_record)
+            except Exception as email_exc:
+                logger.warning(
+                    "Step 8c - Failed to trigger email alert: %s",
+                    email_exc,
+                )
         except Exception as exc:
             self.db.rollback()
             logger.error("Failed to persist SentinelPlaybook: %s", exc)
