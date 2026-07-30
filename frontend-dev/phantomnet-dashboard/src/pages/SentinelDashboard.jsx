@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter, FaSearch } from "react-icons/fa";
 import PlaybookList from "../components/sentinel/PlaybookList";
+import SentinelStatsPanel from "../components/sentinel/SentinelStatsPanel";
 import MitreTag from "../components/sentinel/MitreTag";
 import MitreMatrix from "../components/sentinel/MitreMatrix";
 import RulePreview from "../components/sentinel/RulePreview";
@@ -602,6 +603,9 @@ const SentinelDashboard = () => {
 
       {dashboardTab === "playbooks" ? (
         <>
+          {/* Playbook Metrics & Analytics */}
+          <SentinelStatsPanel stats={stats} loading={loading} />
+
           {/* MITRE ATT&CK Techniques (Quick Reference) */}
           <div className="sentinel-content" style={{ marginBottom: "2rem" }}>
             <div className="sentinel-section-header">
