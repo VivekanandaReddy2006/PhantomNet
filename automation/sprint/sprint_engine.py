@@ -27,7 +27,11 @@ import json
 import sys
 import time
 import argparse
+import os
 from pathlib import Path
+
+# Remove invalid GITHUB_TOKEN if present in environment so gh CLI falls back to keyring authentication
+os.environ.pop("GITHUB_TOKEN", None)
 
 # ━━━━━━━━━━━━━━━━━━━━━ CONFIGURATION ━━━━━━━━━━━━━━━━━━━━━
 PROJECT_NUMBER = "5"

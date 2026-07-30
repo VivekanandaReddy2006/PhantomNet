@@ -1,0 +1,30 @@
+{
+  "base_value": 0.30002000000000006,
+  "attributions": [
+    {
+      "feature": "time_of_day_deviation",
+      "value": 0.2696,
+      "shap_value": 0.2696
+    },
+    {
+      "feature": "packet_size_variance",
+      "value": 0.2623,
+      "shap_value": 0.2623
+    },
+    {
+      "feature": "protocol_encoding",
+      "value": 0.0405,
+      "shap_value": 0.0405
+    },
+    {
+      "feature": "honeypot_interaction_count",
+      "value": 0.0402,
+      "shap_value": 0.0402
+    },
+    {
+      "feature": "packet_length",
+      "value": 0.0298,
+      "shap_value": 0.0298
+    }
+  ]
+}

@@ -23,7 +23,10 @@ except ImportError:
 class AnomalyDetector:
     def __init__(self):
         # The Brain: Isolation Forest
-        # contamination=0.1 means we expect ~10% of traffic to be attacks
+        # contamination=0.15 represents the expected proportion of anomalous
+        # traffic in typical honeypot deployment (not the evaluation dataset's
+        # malicious ratio, which is 30.2% — contamination is calibrated for
+        # the deployment scenario, not the evaluation distribution).
         self.model = IsolationForest(
             n_estimators=100, contamination=0.15, random_state=42
         )
