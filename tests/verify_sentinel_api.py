@@ -240,6 +240,20 @@ assert ".json" in export_json.headers.get("content-disposition", "")
 print("Test 16 PASS: POST /export format=json returns .json file download")
 
 # ------------------------------------------------------------------
+# Test 16b: POST /playbooks/{id}/export with format=pdf
+# ------------------------------------------------------------------
+# Reset status to test export again
+row = db.query(_SP).filter(_SP.id == test_db_id).first()
+row.status = "approved"
+db.commit()
+
+export_pdf = export_playbook(playbook_id=test_db_id, format="pdf", db=db)
+assert export_pdf.status_code == 200
+assert "application/pdf" in export_pdf.media_type
+assert ".pdf" in export_pdf.headers.get("content-disposition", "")
+print("Test 16b PASS: POST /export format=pdf returns .pdf file download")
+
+# ------------------------------------------------------------------
 # Test 17: POST /playbooks/{id}/export with invalid format returns 400
 # ------------------------------------------------------------------
 try:

@@ -2094,4 +2094,90 @@ body[data-theme="light"] .llm-placeholder-desc {
     transform: none;
 }
 
+/* ── Export Dropdown Styles ── */
+.pbv-export-dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.pbv-export-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 8px;
+    box-shadow: 
+        0 10px 25px -5px rgba(0, 0, 0, 0.5), 
+        0 0 15px rgba(139, 92, 246, 0.05);
+    z-index: 10000;
+    min-width: 175px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.35rem;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    animation: pbvDropdownIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body[data-theme="light"] .pbv-export-menu {
+    background: rgba(255, 255, 255, 0.98);
+    border-color: rgba(139, 92, 246, 0.15);
+    box-shadow: 
+        0 10px 25px -5px rgba(0, 0, 0, 0.1), 
+        0 0 15px rgba(139, 92, 246, 0.03);
+}
+
+@keyframes pbvDropdownIn {
+    from { opacity: 0; transform: translateY(-4px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pbv-export-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.8rem;
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    width: 100%;
+}
+
+body[data-theme="light"] .pbv-export-item {
+    color: #475569;
+}
+
+.pbv-export-item:hover {
+    background: rgba(139, 92, 246, 0.12);
+    color: #a78bfa;
+}
+
+body[data-theme="light"] .pbv-export-item:hover {
+    background: rgba(139, 92, 246, 0.06);
+    color: #7c3aed;
+}
+
+.pbv-export-item-icon {
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+/* ── Spin Animation ── */
+@keyframes pbvSpin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+.pbv-spin {
+    animation: pbvSpin 1s linear infinite;
+}
+
 

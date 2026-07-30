@@ -445,7 +445,18 @@ def test_api_export_playbook(db_session):
     if "type" in stix_bundle:
         assert stix_bundle["type"] in ["bundle", "success"]
 
-    # 4. Invalid format
+    # Reset to approved to test next format
+    pb.status = "approved"
+    db_session.commit()
+
+    # 4. Export as pdf
+    r = client.post(f"/api/sentinel/playbooks/{pb.id}/export?format=pdf")
+    assert r.status_code == 200
+    assert "application/pdf" in r.headers["content-type"]
+    assert "attachment" in r.headers["content-disposition"]
+    assert f"{pb.playbook_id}.pdf" in r.headers["content-disposition"]
+
+    # 5. Invalid format
     r = client.post(f"/api/sentinel/playbooks/{pb.id}/export?format=invalid_fmt")
     assert r.status_code == 400
     assert "Invalid export format" in r.json()["detail"]

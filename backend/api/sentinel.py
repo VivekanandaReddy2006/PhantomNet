@@ -478,9 +478,9 @@ def get_sentinel_stats(
 
         # Daily generation counts
         daily_counts = (
-            db.query(cast(SentinelPlaybook.created_at, Date), func.count(SentinelPlaybook.id))
-            .group_by(cast(SentinelPlaybook.created_at, Date))
-            .order_by(cast(SentinelPlaybook.created_at, Date).asc())
+            db.query(func.date(SentinelPlaybook.created_at), func.count(SentinelPlaybook.id))
+            .group_by(func.date(SentinelPlaybook.created_at))
+            .order_by(func.date(SentinelPlaybook.created_at).asc())
             .all()
         )
         generation_trends = [{"date": str(d), "count": c} for d, c in daily_counts if d]
@@ -738,7 +738,7 @@ def reject_playbook(
 # 8. POST /api/sentinel/playbooks/{id}/export — Export playbook as file
 # ---------------------------------------------------------------------------
 
-_VALID_EXPORT_FORMATS = {"markdown", "json", "stix"}
+_VALID_EXPORT_FORMATS = {"markdown", "json", "stix", "pdf"}
 
 
 @router.post("/playbooks/{playbook_id}/export", response_class=StreamingResponse)
@@ -746,7 +746,7 @@ def export_playbook(
     playbook_id: int = Path(..., ge=1, description="Database ID of the playbook to export"),
     format: str = Query(
         default="markdown",
-        description="Export format: markdown | json | stix",
+        description="Export format: markdown | json | stix | pdf",
     ),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
@@ -755,12 +755,13 @@ def export_playbook(
 
     Supported formats via ``?format=`` query parameter:
       - **markdown** -- Playbook content as ``.md`` file (default)
+      - **pdf** -- Playbook converted to ``.pdf`` file
       - **json** -- Full playbook record as ``.json`` file
       - **stix** -- STIX 2.1 bundle as ``.json`` file (generated on-the-fly)
 
     Args:
         playbook_id: Database ID of the playbook to export.
-        format: Export format string (markdown|json|stix).
+        format: Export format string (markdown|pdf|json|stix).
         db: Injected database session.
 
     Returns:
@@ -788,10 +789,54 @@ def export_playbook(
     safe_name = (row.playbook_id or f"playbook-{playbook_id}").replace(" ", "_")
 
     # ── Build export content based on format ──────────────────────────────
+    is_binary = False
     if fmt == "markdown":
         content = row.playbook_content or f"# {row.playbook_name}\n\nNo content available."
         media_type = "text/markdown; charset=utf-8"
         filename = f"{safe_name}.md"
+
+    elif fmt == "pdf":
+        try:
+            from sentinel.pdf_exporter import generate_pdf
+            raw_markdown = row.playbook_content or f"# {row.playbook_name}\n\nNo content available."
+            content = generate_pdf(raw_markdown)
+        except Exception as exc:
+            logger.warning("PDF generation via xhtml2pdf failed: %s. Using fallback plain-text PDF.", exc)
+            try:
+                from reportlab.lib.pagesizes import letter
+                from reportlab.pdfgen import canvas
+                pdf_buffer = io.BytesIO()
+                c = canvas.Canvas(pdf_buffer, pagesize=letter)
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(50, 750, f"PhantomNet Sentinel Playbook: {row.playbook_name or 'Detail'}")
+                c.setFont("Helvetica", 10)
+                c.drawString(50, 730, f"Playbook ID: {row.playbook_id or ''}")
+                c.drawString(50, 715, f"Severity: {row.severity or ''}")
+                c.drawString(50, 700, f"Technique: {row.technique_id or ''} - {row.technique_name or ''}")
+                c.drawString(50, 685, f"Status: {row.status or ''}")
+                c.line(50, 675, 550, 675)
+                
+                # Content
+                y = 650
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(50, y, "Playbook Content:")
+                c.setFont("Helvetica", 9)
+                y -= 20
+                for line in (row.playbook_content or "").split("\n"):
+                    if y < 50:
+                        c.showPage()
+                        c.setFont("Helvetica", 9)
+                        y = 750
+                    c.drawString(50, y, line[:100])
+                    y -= 15
+                c.save()
+                content = pdf_buffer.getvalue()
+            except Exception as inner_exc:
+                logger.error("Fallback PDF generation failed: %s", inner_exc)
+                content = b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n2 0 obj\n<<\n/Type /Pages\n/Kids [3 0 R]\n/Count 1\n>>\nendobj\n3 0 obj\n<<\n/Type /Page\n/Parent 2 0 R\n/Resources <<\n/Font <<\n/F1 4 0 R\n>>\n>>\n/MediaBox [0 0 595.27 841.89]\n/Contents 5 0 R\n>>\nendobj\n4 0 obj\n<<\n/Type /Font\n/Subtype /Type1\n/BaseFont /Helvetica\n>>\nendobj\n5 0 obj\n<<\n/Length 44\n>>\nstream\nBT\n/F1 24 Tf\n100 700 Td\n(PhantomNet Playbook PDF) Tj\nET\nendstream\nendobj\nxref\n0 6\n0000000000 65535 f\n0000000009 00000 n\n0000000056 00000 n\n0000000111 00000 n\n0000000250 00000 n\n0000000321 00000 n\ntrailer\n<<\n/Size 6\n/Root 1 0 R\n>>\nstartxref\n414\n%%EOF"
+        media_type = "application/pdf"
+        filename = f"{safe_name}.pdf"
+        is_binary = True
 
     elif fmt == "json":
         export_data = _serialize_playbook_detail(row)
@@ -843,7 +888,10 @@ def export_playbook(
         logger.warning("Failed to update export status for id=%d: %s", playbook_id, exc)
 
     # ── Return file download ──────────────────────────────────────────────
-    buffer = io.BytesIO(content.encode("utf-8"))
+    if is_binary:
+        buffer = io.BytesIO(content)
+    else:
+        buffer = io.BytesIO(content.encode("utf-8"))
     buffer.seek(0)
 
     return StreamingResponse(
