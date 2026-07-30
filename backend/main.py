@@ -622,7 +622,15 @@ def prometheus_metrics() -> str:
     Returns:
         str: Metrics data in Prometheus format.
     """
-    return get_metrics_response()
+    from fastapi.responses import PlainTextResponse
+    from middleware.metrics_collector import metrics
+    from sentinel.metrics import sentinel_metrics
+    
+    content = metrics.to_prometheus() + sentinel_metrics.to_prometheus()
+    return PlainTextResponse(
+        content=content,
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
 
 
 @app.get("/api/cache/stats")

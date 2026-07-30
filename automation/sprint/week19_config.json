@@ -1,0 +1,382 @@
+{
+    "_comment": "PhantomNet Sprint Config — Week 19 (Month 5 Week 3: Batch Operations & PDF Export, Days 31-35)",
+    "week": 19,
+    "milestone_title": "Month 5 – LLM Integration & Advanced Features (Weeks 17–20)",
+    "milestone_description": "Implementation of local LLM narrative integration, TAXII feed server, MITRE ATT&CK visualization, PDF export, and batch operations.",
+    "month_label": "month-5",
+    "extra_labels": [
+        "batch-operations",
+        "pdf-export"
+    ],
+    "labels": [
+        {
+            "name": "month-5",
+            "color": "1F6FEB",
+            "description": "Month 5 LLM Integration phase"
+        },
+        {
+            "name": "week-19",
+            "color": "0E8A16",
+            "description": "Week 19 tasks"
+        },
+        {
+            "name": "batch-operations",
+            "color": "FBCA04",
+            "description": "Batch approve/reject & versioning"
+        },
+        {
+            "name": "pdf-export",
+            "color": "BFD4F2",
+            "description": "PDF export & scheduler"
+        }
+    ],
+    "day_map": {
+        "1": "Mon (Jul 27)",
+        "2": "Tue (Jul 28)",
+        "3": "Wed (Jul 29)",
+        "4": "Thu (Jul 30)",
+        "5": "Fri (Jul 31)"
+    },
+    "tasks": [
+        {
+            "Day": 1,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "Add Batch Approve and Reject API Endpoints",
+            "Objective": "Add batch approve/reject API endpoints in FastAPI backend to allow operations on multiple playbooks simultaneously.",
+            "Tasks": [
+                "Create POST /api/sentinel/playbooks/batch/approve accepting a list of playbook IDs.",
+                "Create POST /api/sentinel/playbooks/batch/reject accepting a list of playbook IDs.",
+                "Implement batch transaction processing and error handling for partial failures."
+            ],
+            "Deliverables": [
+                "POST /api/sentinel/playbooks/batch/approve and POST /api/sentinel/playbooks/batch/reject working endpoints in backend/api/sentinel.py."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 1,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "Evaluate PDF Export Approaches and Dependencies",
+            "Objective": "Evaluate client-side vs server-side PDF export libraries for playbook documentation generation.",
+            "Tasks": [
+                "Evaluate client-side PDF generation with jspdf + jspdf-autotable.",
+                "Evaluate Python fallback options (reportlab / weasyprint) if client-side rendering lacks formatting quality.",
+                "Document technical decisions and styling guidelines for PDF playbook reports."
+            ],
+            "Deliverables": [
+                "Architecture decision note and setup for PDF export in docs/pdf_export_design.md."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 1,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Add Playbook Versioning and Revision History Storage",
+            "Objective": "Add version tracking database schema and logic so regenerated playbooks maintain full revision history.",
+            "Tasks": [
+                "Add version column and parent references to SentinelPlaybook database model in backend/models/sentinel.py.",
+                "Update playbook generation workflow to increment version number upon re-generation.",
+                "Ensure historical versions remain retrievable via database query filters."
+            ],
+            "Deliverables": [
+                "Database migration and version history tracking in SentinelPlaybook model."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 1,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Add Multi-Select Checkboxes to Playbook List Component",
+            "Objective": "Enhance Sentinel Dashboard playbook list with multi-selection support for batch actions.",
+            "Tasks": [
+                "Add selection checkboxes to playbook item cards/rows in PlaybookList.jsx.",
+                "Implement header multi-select toggle (Select All / Deselect All).",
+                "Display floating batch action toolbar when one or more playbooks are selected."
+            ],
+            "Deliverables": [
+                "Multi-select UI state and checkbox components in frontend-dev/src/components/sentinel/PlaybookList.jsx."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 2,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "Add Search and Filter Capabilities to Sentinel API",
+            "Objective": "Implement comprehensive query parameters on playbook listing API for keyword search, technique, severity, and date range filtering.",
+            "Tasks": [
+                "Add query parameters search, technique, severity, date_from, date_to to GET /api/sentinel/playbooks.",
+                "Build SQL query filters using SQLAlchemy filters/ILIKE patterns.",
+                "Optimize search indexes and pagination bounds."
+            ],
+            "Deliverables": [
+                "Filtered API search endpoint supporting multi-criteria queries."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 2,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "Build PDF Generator Function for Playbook Export",
+            "Objective": "Create PDF rendering function that converts Markdown playbooks into clean, styled PDF documents with PhantomNet branding.",
+            "Tasks": [
+                "Implement PDF generation builder generate_pdf(playbook_markdown) -> bytes.",
+                "Apply custom PhantomNet header/footer styling, executive summary styling, and MITRE code block formatting.",
+                "Validate proper pagination, page numbers, and dynamic table bounds."
+            ],
+            "Deliverables": [
+                "PDF generator module in backend/sentinel/pdf_exporter.py or frontend export builder."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Build Automated Sentinel Generation Scheduler Service",
+            "Objective": "Implement automated background task scheduler to trigger periodic sentinel playbook generation.",
+            "Tasks": [
+                "Integrate periodic background task with backend/services/scheduler_service.py to trigger sentinel pipeline every N minutes.",
+                "Add configuration flags SENTINEL_AUTO_GEN_ENABLED and SENTINEL_AUTO_GEN_INTERVAL_MINUTES.",
+                "Ensure background execution handles locking to avoid concurrent generation collisions."
+            ],
+            "Deliverables": [
+                "Periodic playbook auto-generation service integrated into background scheduler."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 2,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Add Search Bar and Advanced Filters to Sentinel Dashboard",
+            "Objective": "Connect UI search bar and dropdown filter controls to the search/filter backend API.",
+            "Tasks": [
+                "Build keyword search input field with debounce mechanism in SentinelDashboard.jsx.",
+                "Add dropdown filter selectors for Severity, Status, and MITRE Technique.",
+                "Update state management to refetch playbook list on filter change."
+            ],
+            "Deliverables": [
+                "Responsive search bar and filter dropdown bar in Sentinel Dashboard UI."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "Implement Dashboard Analytics and Stats API Endpoints",
+            "Objective": "Build aggregated statistics API endpoints returning metrics on playbooks by severity, approval rate, confidence, and generation trends.",
+            "Tasks": [
+                "Create GET /api/sentinel/stats endpoint returning summary aggregate numbers.",
+                "Compute distributions for severity, status, average confidence score, and daily generation counts.",
+                "Ensure fast execution with SQL aggregation queries."
+            ],
+            "Deliverables": [
+                "GET /api/sentinel/stats returning structured JSON analytics object."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "Integrate PDF Export Endpoint into FastAPI Sentinel API",
+            "Objective": "Expose endpoint allowing users to download playbooks in PDF format.",
+            "Tasks": [
+                "Create POST /api/sentinel/playbooks/{id}/export?format=pdf endpoint.",
+                "Return response as stream/blob with Content-Type: application/pdf and Content-Disposition attachment header.",
+                "Add error handling for non-existent playbooks or generation failures."
+            ],
+            "Deliverables": [
+                "Working PDF export endpoint in backend/api/sentinel.py."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 3,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Add Email Notification System for Critical Playbook Generation",
+            "Objective": "Trigger email alerts when high-severity or CRITICAL playbooks are automatically generated.",
+            "Tasks": [
+                "Integrate email notification dispatcher with SystemConfig settings.",
+                "Compose alert email template containing playbook title, severity, summary, and direct dashboard link.",
+                "Trigger email sending asynchronously on CRITICAL playbook creation."
+            ],
+            "Deliverables": [
+                "Email alert dispatcher integrated into playbook creation event listener."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 3,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Build Sentinel Dashboard Stats and Analytics Panel",
+            "Objective": "Implement visual charts and analytics cards displaying playbook metrics on the Sentinel Dashboard.",
+            "Tasks": [
+                "Create SentinelStatsPanel.jsx component.",
+                "Render summary count cards (Total, Approved, Pending, Rejected).",
+                "Render pie/bar charts for severity distribution, approval rate, and generation timeline using chart library or SVG."
+            ],
+            "Deliverables": [
+                "frontend-dev/src/components/sentinel/SentinelStatsPanel.jsx integrated into Sentinel Dashboard."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 4,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Integration",
+            "Title": "Export Sentinel Metrics to Prometheus Endpoint",
+            "Objective": "Expose Prometheus metrics for monitoring Sentinel playbook generation health and throughput.",
+            "Tasks": [
+                "Define Prometheus metrics (sentinel_playbooks_total, sentinel_approved_total, sentinel_generation_seconds).",
+                "Instrument playbook creation and approval endpoints to update Prometheus counters and histograms.",
+                "Verify metrics exposition on GET /metrics."
+            ],
+            "Deliverables": [
+                "Prometheus metrics instrumentation in backend/api/metrics.py / backend/sentinel/metrics.py."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 4,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Validate PDF Output Quality and Formatting Rules",
+            "Objective": "Test generated PDF files across different attack scenarios to ensure visual quality, table formatting, and link integrity.",
+            "Tasks": [
+                "Test PDF export with multi-page playbooks, long code blocks, and complex MITRE tables.",
+                "Verify code block syntax formatting, header/footer spacing, and hyperlinked ATT&CK references.",
+                "Fix rendering overlaps and alignment issues."
+            ],
+            "Deliverables": [
+                "PDF validation report and visual quality test suite results."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 4,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "Write Comprehensive Unit Tests for Automated Scheduler Integration",
+            "Objective": "Build unit and integration tests validating periodic background auto-generation and interval configurations.",
+            "Tasks": [
+                "Write unit tests in tests/test_sentinel_scheduler.py covering interval triggers, config toggle, and error handling.",
+                "Verify scheduler gracefully recovers from API exceptions during auto-generation.",
+                "Verify mock email notification triggering on CRITICAL events."
+            ],
+            "Deliverables": [
+                "tests/test_sentinel_scheduler.py test suite with 100% passing rate."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 4,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "Implement Export Format Selector Dropdown in PlaybookViewer",
+            "Objective": "Provide download export dropdown options (Markdown, PDF, JSON, STIX 2.1) in PlaybookViewer header.",
+            "Tasks": [
+                "Create export dropdown component in PlaybookViewer.jsx.",
+                "Support formats: Markdown (.md), PDF (.pdf), JSON (.json), STIX 2.1 (.stix.json).",
+                "Trigger correct API fetch and browser file download blob for each selected format."
+            ],
+            "Deliverables": [
+                "Export format selector dropdown in frontend-dev/src/components/sentinel/PlaybookViewer.jsx."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Testing",
+            "Title": "End-to-End Integration Testing for Batch Operations, PDF Export, and Scheduler",
+            "Objective": "Lead team-wide end-to-end integration testing of batch operations, PDF exports, and background auto-scheduler.",
+            "Tasks": [
+                "Execute end-to-end testing script validating batch approve/reject workflows on dashboard.",
+                "Verify background scheduler generating playbooks and updating stats panel dynamically.",
+                "Validate PDF download accuracy and error handling under concurrency."
+            ],
+            "Deliverables": [
+                "Integration test execution logs and verification summary."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Security and Integrity Audit for Batch Operations & PDF Exports",
+            "Objective": "Perform input validation, authorization checks, and payload sanitization audit on new API endpoints.",
+            "Tasks": [
+                "Test batch approval endpoints with invalid/malformed playbook IDs.",
+                "Test PDF export with potential XSS or path injection strings in playbook body.",
+                "Verify rate limits and error responses."
+            ],
+            "Deliverables": [
+                "Security audit report and input validation fixes."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "System Resource and Concurrency Monitoring for Auto-Scheduler",
+            "Objective": "Benchmark auto-generation background task memory footprint and CPU utilization under multi-threading.",
+            "Tasks": [
+                "Monitor DB connection pooling during background auto-generation.",
+                "Check memory usage during LLM narrative creation / template rendering under auto-scheduler.",
+                "Document optimal auto-generation intervals and concurrency bounds."
+            ],
+            "Deliverables": [
+                "Performance and resource footprint benchmark report."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "UI Bug Fixes and Responsiveness Audit for Batch & Filter Features",
+            "Objective": "Perform visual polish and mobile/desktop responsiveness check on Sentinel Dashboard stats panel, filters, and batch controls.",
+            "Tasks": [
+                "Audit UI layout at 1080p, 720p, and mobile viewport sizes.",
+                "Fix hover states, tooltip alignments, and dark mode theme consistency across stats panel and filter bar.",
+                "Verify smooth UX loading states during batch processing."
+            ],
+            "Deliverables": [
+                "UI polish fixes and verified responsive layout."
+            ],
+            "Estimate": 4
+        }
+    ]
+}

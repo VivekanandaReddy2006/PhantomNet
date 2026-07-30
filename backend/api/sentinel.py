@@ -565,6 +565,10 @@ def generate_playbook(
         HTTPException 500: On pipeline failure.
     """
     try:
+        import time
+        from sentinel.metrics import sentinel_metrics
+        start_time = time.perf_counter()
+
         campaign_data = {
             "source_ips": request.source_ips,
             "target_ports": request.target_ports,
@@ -577,6 +581,10 @@ def generate_playbook(
         svc = SentinelService(db)
         playbook = svc.generate_playbook(campaign_data, background_tasks=background_tasks)
         result = playbook.result_dict
+
+        duration_seconds = time.perf_counter() - start_time
+        sentinel_metrics.inc_playbooks_total()
+        sentinel_metrics.observe_generation(duration_seconds)
 
         return {
             "status": "success",
@@ -647,6 +655,10 @@ def approve_playbook(
         row.reviewed_at = datetime.utcnow()
         db.commit()
         db.refresh(row)
+        
+        from sentinel.metrics import sentinel_metrics
+        sentinel_metrics.inc_approved_total()
+        
         logger.info(
             "Playbook id=%d approved by %s", playbook_id, body.reviewed_by
         )
@@ -1236,6 +1248,9 @@ def batch_approve_playbooks(
             row.reviewed_by = body.reviewed_by
             row.reviewed_at = datetime.utcnow()
             db.commit()
+            
+            from sentinel.metrics import sentinel_metrics
+            sentinel_metrics.inc_approved_total()
             
             results["successful"].append(pb_id)
             logger.info("Playbook id=%d approved in batch by %s", pb_id, body.reviewed_by)
