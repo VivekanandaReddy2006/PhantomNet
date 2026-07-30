@@ -21,6 +21,8 @@ import {
   FaMagic,
   FaChevronDown,
   FaChevronUp,
+  FaFilePdf,
+  FaSpinner,
 } from "react-icons/fa";
 import RulePreview from "./RulePreview";
 import ApprovalControls from "./ApprovalControls";
@@ -761,6 +763,9 @@ const PlaybookViewer = ({
   const [isRegeneratingLLM, setIsRegeneratingLLM] = useState(false);
   const [llmModel, setLlmModel] = useState("Mistral");
   const [userRole, setUserRole] = useState("Viewer");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Read current logged-in user role from localStorage
   useEffect(() => {
@@ -847,6 +852,21 @@ const PlaybookViewer = ({
     };
   }, [isOpen]);
 
+  /* ── Click outside export dropdown hook ── */
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
   /* ── Close on overlay click ── */
   const handleOverlayClick = useCallback(
     (e) => {
@@ -877,12 +897,48 @@ const PlaybookViewer = ({
 
   const safeTitle = title.replace(/\s+/g, "_");
 
-  /* ── Export current tab (header button) ── */
-  const handleExport = useCallback(() => {
-    const content = activeTab === "playbook" ? resolvedMarkdown : activeTab === "snort" ? snortRule : sigmaRule;
-    const ext = activeTab === "playbook" ? "md" : activeTab === "snort" ? "rules" : "yml";
-    triggerDownload(content, `${safeTitle}.${ext}`);
-  }, [activeTab, resolvedMarkdown, snortRule, sigmaRule, safeTitle, triggerDownload]);
+  /* ── Format-specific API export & download ── */
+  const handleFormatExport = async (format) => {
+    if (!id) return;
+    setIsExporting(true);
+    setDropdownOpen(false);
+    try {
+      const response = await fetch(`/api/sentinel/playbooks/${id}/export?format=${format}`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const contentDisposition = response.headers.get("Content-Disposition");
+      let filename = `${safeTitle}.${format === "stix" ? "stix.json" : format}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // delay for Firefox/others
+      setTimeout(() => window.URL.revokeObjectURL(url), 150);
+      
+      if (onStatusChange) {
+        onStatusChange("exported");
+      }
+    } catch (error) {
+      console.error(`Error exporting playbook in format ${format}:`, error);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   /* ── Format-specific downloads ── */
   const handleDownloadSnort = useCallback(() => {
@@ -1022,15 +1078,55 @@ const PlaybookViewer = ({
           </div>
 
           <div className="pbv-header-actions">
-            <button
-              className="pbv-action-btn"
-              onClick={handleExport}
-              title="Export content"
-              aria-label="Export playbook"
-              id="playbook-viewer-export-btn"
-            >
-              <FaDownload />
-            </button>
+            <div className="pbv-export-dropdown-container" ref={dropdownRef}>
+              <button
+                className={`pbv-action-btn ${dropdownOpen ? "active" : ""}`}
+                onClick={() => setDropdownOpen((o) => !o)}
+                title="Export playbook..."
+                aria-label="Export playbook menu"
+                aria-expanded={dropdownOpen}
+                disabled={isExporting || !id}
+                id="playbook-viewer-export-btn"
+              >
+                {isExporting ? <FaSpinner className="pbv-spin" /> : <FaDownload />}
+              </button>
+              {dropdownOpen && (
+                <div className="pbv-export-menu" role="menu">
+                  <button
+                    className="pbv-export-item"
+                    onClick={() => handleFormatExport("markdown")}
+                    role="menuitem"
+                  >
+                    <FaFileAlt className="pbv-export-item-icon" style={{ color: "#a78bfa" }} />
+                    <span>Markdown (.md)</span>
+                  </button>
+                  <button
+                    className="pbv-export-item"
+                    onClick={() => handleFormatExport("pdf")}
+                    role="menuitem"
+                  >
+                    <FaFilePdf className="pbv-export-item-icon" style={{ color: "#ef4444" }} />
+                    <span>PDF (.pdf)</span>
+                  </button>
+                  <button
+                    className="pbv-export-item"
+                    onClick={() => handleFormatExport("json")}
+                    role="menuitem"
+                  >
+                    <FaFileCode className="pbv-export-item-icon" style={{ color: "#3b82f6" }} />
+                    <span>JSON (.json)</span>
+                  </button>
+                  <button
+                    className="pbv-export-item"
+                    onClick={() => handleFormatExport("stix")}
+                    role="menuitem"
+                  >
+                    <FaCubes className="pbv-export-item-icon" style={{ color: "#22c55e" }} />
+                    <span>STIX 2.1 (.stix.json)</span>
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               className="pbv-action-btn"
               onClick={() => setIsFullscreen((f) => !f)}
