@@ -20,7 +20,7 @@ import hashlib
 import threading
 import time
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 # Force SQLite test database and test environment before importing application modules
 os.environ["DATABASE_URL"] = "sqlite:///./phantomnet.db"
@@ -327,6 +327,103 @@ class TestSchedulerServiceSentinel(unittest.TestCase):
 
         # Lock should be free
         self.assertFalse(svc._sentinel_lock.locked())
+
+    def test_execute_cycle_recovers_from_api_exceptions(self):
+        """Cycle continues processing subsequent campaigns if one fails."""
+        svc = self._make_service()
+        svc._sentinel_seeded = True
+
+        mock_clusterer = MagicMock()
+        mock_clusterer.identify_campaigns.return_value = {
+            "campaign_count": 2,
+            "campaigns": [
+                {
+                    "campaign_id": "CAMP-FAIL-001",
+                    "unique_sources": ["192.168.1.1"],
+                    "target_ports": [2222],
+                    "protocols": ["TCP"],
+                    "event_count": 50,
+                },
+                {
+                    "campaign_id": "CAMP-SUCC-002",
+                    "unique_sources": ["10.0.0.1"],
+                    "target_ports": [80],
+                    "protocols": ["TCP"],
+                    "event_count": 100,
+                },
+            ],
+        }
+
+        mock_svc_instance = MagicMock()
+        mock_svc_instance.generate_playbook.side_effect = [
+            RuntimeError("API Exception"),
+            None
+        ]
+        mock_svc_cls = MagicMock(return_value=mock_svc_instance)
+
+        mock_session = MagicMock()
+
+        with patch.dict("sys.modules", {
+            "ml_engine.campaign_clustering": MagicMock(
+                campaign_clusterer=mock_clusterer
+            ),
+            "sentinel.sentinel_service": MagicMock(
+                SentinelService=mock_svc_cls
+            ),
+        }):
+            with patch(
+                "services.scheduler_service.SessionLocal",
+                return_value=mock_session,
+            ):
+                svc._execute_sentinel_cycle()
+
+                # Verify generate_playbook was called twice despite the first exception
+                self.assertEqual(mock_svc_instance.generate_playbook.call_count, 2)
+                # Verify only one hash (for the successful one) was added
+                self.assertEqual(len(svc._sentinel_processed_hashes), 1)
+
+    @patch("sentinel.email_notifier.trigger_email_alert_async")
+    @patch("sentinel.sentinel_service.generate_rules_for_campaign")
+    @patch("sentinel.sentinel_service.calculate_confidence")
+    @patch("sentinel.sentinel_service.SentinelService.playbook_gen", new_callable=PropertyMock)
+    def test_mock_email_notification_triggering(self, mock_playbook_gen_prop, mock_scoring, mock_rules, mock_email):
+        """Verify mock email notification triggering on CRITICAL events."""
+        from sentinel.sentinel_service import SentinelService
+        from sentinel.confidence_scoring import ConfidenceResult
+        
+        mock_db = MagicMock()
+        mock_result = MagicMock(spec=ConfidenceResult)
+        mock_result.confidence = 95.0
+        mock_result.severity = "CRITICAL"
+        mock_result.cluster_size_score = 90.0
+        mock_result.ml_avg_score = 0.0
+        mock_result.ioc_density = 0.0
+        mock_result.multi_proto_bonus = 0.0
+        mock_result.breakdown = {}
+        mock_scoring.return_value = mock_result
+
+        mock_rules.return_value = {"snort_rules": "", "sigma_rules": "", "metadata": {"snort_rule_count": 0, "sigma_rule_count": 0}}
+        
+        mock_playbook_gen = MagicMock()
+        mock_playbook_gen.generate.return_value = "# Playbook"
+        mock_playbook_gen._select_template.return_value = "default.md"
+        mock_playbook_gen_prop.return_value = mock_playbook_gen
+        
+        svc = SentinelService(mock_db)
+        svc.trigger_llm_narrative = MagicMock()
+        
+        campaign_data = {
+            "source_ips": ["10.0.0.1"],
+            "target_ports": [22],
+            "protocols": ["TCP"],
+            "event_count": 100,
+            "campaign_id": "CAMP-EMAIL"
+        }
+        
+        svc.generate_playbook(campaign_data)
+        
+        # Verify the email trigger was called
+        mock_email.assert_called_once()
 
 
 if __name__ == "__main__":
