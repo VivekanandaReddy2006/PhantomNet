@@ -433,3 +433,17 @@ body[data-theme="light"] .playbook-card.selected {
     opacity: 1;
     border-color: #a78bfa;
 }
+
+/* Disabled state */
+.playbook-card.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none !important;
+    background: rgba(15, 23, 42, 0.2) !important;
+}
+
+body[data-theme="light"] .playbook-card.disabled {
+    background: rgba(241, 245, 249, 0.5) !important;
+}

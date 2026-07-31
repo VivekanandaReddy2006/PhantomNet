@@ -177,6 +177,7 @@ const PlaybookList = ({
                 ref={selectAllRef}
                 checked={isAllSelected}
                 onChange={handleSelectAllChange}
+                disabled={loading}
                 className="playbook-list-header-checkbox"
               />
               <span className="select-all-text">
@@ -208,6 +209,7 @@ const PlaybookList = ({
             selectable={true}
             selected={selectedIds.includes(pb.id)}
             onSelect={(checked) => handleSelectOne(pb.id, checked)}
+            disabled={loading}
           />
         ))}
       </div>
@@ -250,7 +252,7 @@ const PlaybookList = ({
 
       {/* ── Confirmation Modal ── */}
       {confirmAction && (
-        <div className="confirm-modal-overlay" onClick={() => setConfirmAction(null)}>
+        <div className="confirm-modal-overlay" onClick={() => !loading && setConfirmAction(null)}>
           <div
             className={`confirm-modal-card pro-card batch-confirm-card ${confirmAction}-card`}
             onClick={(e) => e.stopPropagation()}

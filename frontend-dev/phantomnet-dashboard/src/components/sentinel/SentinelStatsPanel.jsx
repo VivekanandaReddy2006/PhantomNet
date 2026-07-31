@@ -256,14 +256,16 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                   r="50"
                   fill="transparent"
                   stroke={seg.color}
-                  strokeWidth={activeSeverity === seg.name ? "18" : "14"}
                   strokeDasharray={seg.strokeLength + " 314.159"}
                   strokeDashoffset={seg.strokeOffset}
                   transform="rotate(-90 100 100)"
                   className="donut-segment"
                   onMouseEnter={() => setActiveSeverity(seg.name)}
                   onMouseLeave={() => setActiveSeverity(null)}
-                  style={{ color: seg.color }}
+                  style={{
+                    color: seg.color,
+                    strokeWidth: activeSeverity === seg.name ? "18px" : "14px",
+                  }}
                 />
               ))}
               <text
@@ -464,16 +466,17 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                       strokeWidth={isHovered ? "2.5" : "1.5"}
                       className="timeline-point"
                       onMouseEnter={(e) => {
-                        const rect = e.currentTarget.ownerSVGElement.getBoundingClientRect();
+                        const circleRect = e.currentTarget.getBoundingClientRect();
+                        const wrapperRect = e.currentTarget.ownerSVGElement.parentElement.getBoundingClientRect();
+                        const tooltipX = circleRect.left - wrapperRect.left + circleRect.width / 2;
+                        const tooltipY = circleRect.top - wrapperRect.top;
                         setHoveredTrend({
                           idx,
                           date: pt.date,
                           label: pt.label,
                           count: pt.count,
-                          x: pt.x,
-                          y: pt.y,
-                          clientX: pt.x, // SVG responsive mapping relative x
-                          clientY: pt.y,
+                          tooltipX,
+                          tooltipY,
                         });
                       }}
                       onMouseLeave={() => setHoveredTrend(null)}
@@ -499,8 +502,8 @@ const SentinelStatsPanel = ({ stats, loading }) => {
               <div
                 className="timeline-tooltip active"
                 style={{
-                  left: `${(hoveredTrend.clientX / 500) * 100}%`,
-                  top: `${(hoveredTrend.clientY / 200) * 100}%`,
+                  left: `${hoveredTrend.tooltipX}px`,
+                  top: `${hoveredTrend.tooltipY}px`,
                 }}
               >
                 <div className="tooltip-date">{hoveredTrend.date || "Date Unknown"}</div>

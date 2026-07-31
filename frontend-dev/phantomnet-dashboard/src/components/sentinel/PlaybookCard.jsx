@@ -23,12 +23,19 @@ const PlaybookCard = ({
   selectable = false,
   selected = false,
   onSelect,
+  disabled = false,
 }) => {
   const severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
   const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
-    <div className={`playbook-card hud-font ${selected ? "selected" : ""}`} onClick={onClick}>
+    <div
+      className={`playbook-card hud-font ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}`}
+      onClick={(e) => {
+        if (disabled) return;
+        onClick && onClick(e);
+      }}
+    >
       {/* HUD Corners */}
       <div className="hud-corner top-left"></div>
       <div className="hud-corner bottom-right"></div>
@@ -46,6 +53,7 @@ const PlaybookCard = ({
               className="playbook-card-select-checkbox"
               checked={selected}
               onChange={(e) => onSelect && onSelect(e.target.checked, e)}
+              disabled={disabled}
               aria-label={`Select playbook ${title}`}
             />
           </div>
@@ -113,6 +121,7 @@ PlaybookCard.propTypes = {
   selectable: PropTypes.bool,
   selected: PropTypes.bool,
   onSelect: PropTypes.func,
+  disabled: PropTypes.bool,
 };
 
 export default PlaybookCard;
