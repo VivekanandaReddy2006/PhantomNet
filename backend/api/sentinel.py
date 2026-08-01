@@ -58,6 +58,10 @@ from sentinel.mitre_mapper import get_all_techniques
 # pyrefly: ignore [missing-import]
 from sentinel.sentinel_service import SentinelService
 
+from middleware.auth import get_current_user
+from database.models import User
+from middleware.rate_limit import rate_limit_dependency
+
 logger = logging.getLogger("api.sentinel")
 
 # ---------------------------------------------------------------------------
@@ -174,7 +178,7 @@ class ReviewRequest(BaseModel):
 
 class BatchReviewRequest(BaseModel):
     """Request body for POST /batch/approve and /batch/reject endpoints."""
-    playbook_ids: List[int] = Field(..., min_length=1, description="List of playbook IDs to process")
+    playbook_ids: List[int] = Field(..., min_length=1, max_length=50, description="List of playbook IDs to process")
     reviewed_by: str = Field(
         ...,
         min_length=1,
@@ -774,6 +778,8 @@ def export_playbook(
         description="Export format: markdown | json | stix | pdf",
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(rate_limit_dependency),
 ) -> StreamingResponse:
     """
     Export a Sentinel playbook as a downloadable file.
@@ -977,6 +983,8 @@ def export_playbook_pdf(
         description="Database primary-key ID of the playbook to export as PDF",
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(rate_limit_dependency),
 ) -> StreamingResponse:
     """
     Dedicated PDF export endpoint — POST /api/sentinel/playbooks/{id}/export/pdf
@@ -1397,6 +1405,8 @@ def get_mitre_matrix(db: Session = Depends(get_db)) -> Dict[str, Any]:
 def batch_approve_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(rate_limit_dependency),
 ) -> Dict[str, Any]:
     """
     Batch approve multiple Sentinel playbooks.
@@ -1413,7 +1423,7 @@ def batch_approve_playbooks(
     """
     results = {"successful": [], "failed": []}
     
-    for pb_id in body.playbook_ids:
+    for pb_id in set(body.playbook_ids):
         try:
             row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == pb_id).first()
             if not row:
@@ -1455,6 +1465,8 @@ def batch_approve_playbooks(
 def batch_reject_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _: None = Depends(rate_limit_dependency),
 ) -> Dict[str, Any]:
     """
     Batch reject multiple Sentinel playbooks.
@@ -1471,7 +1483,7 @@ def batch_reject_playbooks(
     """
     results = {"successful": [], "failed": []}
     
-    for pb_id in body.playbook_ids:
+    for pb_id in set(body.playbook_ids):
         try:
             row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == pb_id).first()
             if not row:

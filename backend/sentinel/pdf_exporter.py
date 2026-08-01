@@ -58,8 +58,29 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Union
 
 import markdown
+import bleach
 
 logger = logging.getLogger("sentinel.pdf_exporter")
+
+def _sanitize_html_for_pdf(html: str) -> str:
+    """Sanitize HTML to prevent XSS and path injection (SSRF) in PDF export."""
+    allowed_tags = [
+        "h1", "h2", "h3", "h4", "h5", "h6", "p", "a", "ul", "ol", "li",
+        "strong", "em", "code", "pre", "blockquote", "table", "thead",
+        "tbody", "tr", "th", "td", "br", "span", "div", "hr"
+    ]
+    allowed_attributes = {
+        "*": ["class", "id", "style"],
+        "a": ["href", "title"],
+        "td": ["colspan", "rowspan"],
+        "th": ["colspan", "rowspan"]
+    }
+    return bleach.clean(
+        html,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        strip=True
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -275,6 +296,8 @@ def _build_html(playbook: Any) -> str:
             playbook_content,
             extensions=["tables", "fenced_code"],
         )
+        # Sanitize HTML to prevent XSS or path injection (e.g. <img src="file:///...">)
+        raw_html_body = _sanitize_html_for_pdf(raw_html_body)
     else:
         raw_html_body = "<p><em>No playbook content available.</em></p>"
 
