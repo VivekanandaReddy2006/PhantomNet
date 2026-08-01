@@ -383,3 +383,38 @@ body[data-theme="light"] .btn-batch-cancel:hover {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* Mobile Responsiveness for Floating Batch Toolbar */
+@media (max-width: 640px) {
+    .floating-batch-toolbar {
+        bottom: 1rem;
+        width: calc(100% - 1.5rem);
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+    }
+    
+    .toolbar-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        text-align: center;
+    }
+    
+    .toolbar-selected-count {
+        font-size: 0.8rem;
+    }
+    
+    .toolbar-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .toolbar-btn {
+        justify-content: center;
+        width: 100%;
+        padding: 0.6rem;
+        font-size: 0.75rem;
+    }
+}

@@ -108,6 +108,7 @@
     display: flex;
     align-items: center;
     gap: 2rem;
+    flex-wrap: wrap;
     margin-bottom: 2.5rem;
     padding: 1rem 1.5rem;
     background: rgba(30, 41, 59, 0.4);
@@ -394,6 +395,7 @@ body[data-theme="light"] .sentinel-empty-hint {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
     margin-bottom: 1.5rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding-bottom: 0.75rem;
@@ -940,6 +942,7 @@ body[data-theme="light"] .sentinel-pagination-container .pagination-size-selecto
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 2rem;
     border-bottom: 1px solid rgba(139, 92, 246, 0.15);
     padding-bottom: 0.75rem;
@@ -1188,5 +1191,40 @@ body[data-theme="light"] .sentinel-filters-toolbar option {
     .sentinel-filters-toolbar .hud-filter-select {
         flex: 1;
         max-width: unset;
+    }
+}
+
+/* Status Bar & General Layout Mobile Adjustments */
+@media (max-width: 768px) {
+    .sentinel-status-bar {
+        gap: 1rem 1.5rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .status-item {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .sentinel-wrapper {
+        padding: 1rem;
+    }
+    .sentinel-header {
+        padding-left: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .sentinel-title {
+        font-size: 1.75rem;
+    }
+    .sentinel-status-bar {
+        gap: 0.75rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+    .nav-tab-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+        width: 100%;
+        justify-content: center;
     }
 }

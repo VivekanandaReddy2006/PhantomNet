@@ -380,11 +380,11 @@ body[data-theme="light"] .legend-val { color: #0f172a; }
 
 /* --- Radial Gauge Chart --- */
 .gauge-bg {
-  stroke: rgba(255, 255, 255, 0.04);
+  stroke: rgba(255, 255, 255, 0.12);
 }
 
 body[data-theme="light"] .gauge-bg {
-  stroke: rgba(0, 0, 0, 0.04);
+  stroke: rgba(0, 0, 0, 0.08);
 }
 
 .gauge-fill {
