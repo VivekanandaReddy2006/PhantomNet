@@ -108,6 +108,17 @@ _OLLAMA_TIMEOUT = httpx.Timeout(
     pool=5.0,       # max seconds to acquire a connection from the pool
 )
 
+# Global semaphore to limit concurrent requests to Ollama
+_llm_semaphore: Optional[asyncio.Semaphore] = None
+
+def get_llm_semaphore() -> asyncio.Semaphore:
+    """Lazily initialize the semaphore within the active event loop."""
+    global _llm_semaphore
+    if _llm_semaphore is None:
+        # Default to 2 concurrent requests to avoid overwhelming local Ollama
+        _llm_semaphore = asyncio.Semaphore(2)
+    return _llm_semaphore
+
 
 # ===========================================================================
 # LLMService — class-based interface (Week 17, Day 1)
@@ -341,74 +352,97 @@ class LLMService:
 
         try:
             start_time = time.time()
-            async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
-                if stream:
-                    # ---- Streaming path: aggregate NDJSON chunks ----
-                    collected_tokens: list[str] = []
-                    async with client.stream("POST", url, json=payload) as response:
+            sem = get_llm_semaphore()
+            
+            # Use asyncio.timeout (or wait_for if on older python, but 3.11+ supports timeout)
+            # Actually, using wait_for is safer across python versions if timeout doesn't exist
+            async def _do_request():
+                async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
+                    if stream:
+                        # ---- Streaming path: aggregate NDJSON chunks ----
+                        collected_tokens: list[str] = []
+                        async with client.stream("POST", url, json=payload) as response:
+                            if response.status_code != 200:
+                                logger.warning(
+                                    "LLMService._call_ollama (stream): Ollama returned "
+                                    "HTTP %d — skipping LLM narrative.",
+                                    response.status_code,
+                                )
+                                return ""
+                            async for raw_line in response.aiter_lines():
+                                raw_line = raw_line.strip()
+                                if not raw_line:
+                                    continue
+                                try:
+                                    chunk = json.loads(raw_line)
+                                except json.JSONDecodeError:
+                                    logger.debug(
+                                        "LLMService._call_ollama (stream): "
+                                        "non-JSON line skipped: %r", raw_line
+                                    )
+                                    continue
+                                token = chunk.get("response", "")
+                                if token:
+                                    collected_tokens.append(token)
+                                if chunk.get("done", False):
+                                    break
+    
+                        raw_text = "".join(collected_tokens)
+                        latency_ms = (time.time() - start_time) * 1000
+                        global last_generation_time_ms
+                        last_generation_time_ms = latency_ms
+    
+                        if latency_ms > 25000:
+                            logger.warning("Slow inference request detected: %.2f ms", latency_ms)
+    
+                        logger.info(
+                            "LLMService._call_ollama (stream): aggregated %d chars "
+                            "from %d chunks (model=%s) in %.2f ms",
+                            len(raw_text), len(collected_tokens), self.model, latency_ms
+                        )
+    
+                    else:
+                        # ---- Aggregated (non-streaming) path ----
+                        response = await client.post(url, json=payload)
                         if response.status_code != 200:
                             logger.warning(
-                                "LLMService._call_ollama (stream): Ollama returned "
-                                "HTTP %d — skipping LLM narrative.",
+                                "LLMService._call_ollama: Ollama returned HTTP %d "
+                                "— skipping LLM narrative.",
                                 response.status_code,
                             )
                             return ""
-                        async for raw_line in response.aiter_lines():
-                            raw_line = raw_line.strip()
-                            if not raw_line:
-                                continue
-                            try:
-                                chunk = json.loads(raw_line)
-                            except json.JSONDecodeError:
-                                logger.debug(
-                                    "LLMService._call_ollama (stream): "
-                                    "non-JSON line skipped: %r", raw_line
-                                )
-                                continue
-                            token = chunk.get("response", "")
-                            if token:
-                                collected_tokens.append(token)
-                            if chunk.get("done", False):
-                                break
-
-                    raw_text = "".join(collected_tokens)
-                    latency_ms = (time.time() - start_time) * 1000
-                    last_generation_time_ms = latency_ms
-
-                    if latency_ms > 25000:
-                        logger.warning("Slow inference request detected: %.2f ms", latency_ms)
-
-                    logger.info(
-                        "LLMService._call_ollama (stream): aggregated %d chars "
-                        "from %d chunks (model=%s) in %.2f ms",
-                        len(raw_text), len(collected_tokens), self.model, latency_ms
-                    )
-
-                else:
-                    # ---- Aggregated (non-streaming) path ----
-                    response = await client.post(url, json=payload)
-                    if response.status_code != 200:
-                        logger.warning(
-                            "LLMService._call_ollama: Ollama returned HTTP %d "
-                            "— skipping LLM narrative.",
-                            response.status_code,
+                        result = response.json()
+                        raw_text = result.get("response", "")
+                        latency_ms = (time.time() - start_time) * 1000
+                        global last_generation_time_ms
+                        last_generation_time_ms = latency_ms
+    
+                        if latency_ms > 25000:
+                            logger.warning("Slow inference request detected: %.2f ms", latency_ms)
+    
+                        logger.info(
+                            "LLMService._call_ollama: received %d chars (model=%s) in %.2f ms",
+                            len(raw_text), self.model, latency_ms
                         )
-                        return ""
-                    result = response.json()
-                    raw_text = result.get("response", "")
-                    latency_ms = (time.time() - start_time) * 1000
-                    last_generation_time_ms = latency_ms
+    
+                    clean_text = self._clean_markdown(raw_text)
+                    return clean_text
 
-                    if latency_ms > 25000:
-                        logger.warning("Slow inference request detected: %.2f ms", latency_ms)
+            async def _do_request_with_semaphore():
+                async with sem:
+                    return await _do_request()
 
-                    logger.info(
-                        "LLMService._call_ollama: received %d chars (model=%s) in %.2f ms",
-                        len(raw_text), self.model, latency_ms
-                    )
+            # Wait for semaphore and execute request with an overall 65 second timeout
+            return await asyncio.wait_for(
+                _do_request_with_semaphore(),
+                timeout=65.0
+            )
 
-                clean_text = self._clean_markdown(raw_text)
-                return clean_text
+        except asyncio.TimeoutError:
+            logger.warning(
+                "LLMService._call_ollama: timeout waiting for semaphore or executing."
+            )
+            return ""
         except httpx.TimeoutException as exc:
             logger.warning(
                 "LLMService._call_ollama: timeout after 60 s reaching Ollama "

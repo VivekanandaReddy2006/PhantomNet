@@ -1,0 +1,377 @@
+{
+    "_comment": "PhantomNet Sprint Config \u2014 Week 20 (Month 5 Week 4: Integration, Testing & V3 Release Prep, Days 36-40)",
+    "week": 20,
+    "milestone_title": "Month 5 \u2013 LLM Integration & Advanced Features (Weeks 17\u201320)",
+    "milestone_description": "Implementation of local LLM narrative integration, TAXII feed server, MITRE ATT&CK visualization, PDF export, and batch operations.",
+    "month_label": "month-5",
+    "extra_labels": [
+        "integration-testing",
+        "documentation"
+    ],
+    "labels": [
+        {
+            "name": "week-20",
+            "color": "0E8A16",
+            "description": "Week 20 tasks"
+        },
+        {
+            "name": "integration-testing",
+            "color": "D4C5F9",
+            "description": "End-to-end integration testing"
+        },
+        {
+            "name": "documentation",
+            "color": "0075CA",
+            "description": "Improvements or additions to documentation"
+        }
+    ],
+    "day_map": {
+        "1": "Mon (Aug 3)",
+        "2": "Tue (Aug 4)",
+        "3": "Wed (Aug 5)",
+        "4": "Thu (Aug 6)",
+        "5": "Fri (Aug 7)"
+    },
+    "tasks": [
+        {
+            "Day": 1,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Documentation",
+            "Title": "Month 5 Retrospective and Week 20 Planning",
+            "Objective": "Review Month 5 progress across Sentinel V3 features and plan the V3.0 release candidate schedule.",
+            "Tasks": [
+                "Conduct month 5 retrospective meeting.",
+                "Review open issues and bugs related to TAXII, LLM, and PDF generation.",
+                "Finalize V3.0 release goals."
+            ],
+            "Deliverables": [
+                "Month 5 retrospective document in docs/retrospective/month5_retrospective.md."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 1,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "TAXII Server Load Testing",
+            "Objective": "Test STIX feed distribution under high concurrent load to ensure TAXII server stability.",
+            "Tasks": [
+                "Use locust or JMeter to simulate multiple SIEM clients pulling STIX bundles.",
+                "Measure response latency and TAXII server memory footprint.",
+                "Optimize pagination and database queries for the STIX feed."
+            ],
+            "Deliverables": [
+                "TAXII load testing report and implemented optimizations."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 1,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "LLM Integration Stress Test",
+            "Objective": "Evaluate local Ollama/Mistral LLM performance for concurrent playbook narrative generation.",
+            "Tasks": [
+                "Trigger multiple simultaneous LLM prompt generations.",
+                "Monitor GPU/CPU usage and generation time.",
+                "Implement request queuing to prevent LLM service crash under heavy load."
+            ],
+            "Deliverables": [
+                "LLM stress test results and request queuing implementation."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 1,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "E2E Dashboard Testing for Sentinel V3",
+            "Objective": "Implement automated UI tests for Sentinel V3 dashboard flows (Review, Approve, Export).",
+            "Tasks": [
+                "Write Cypress/Playwright scripts for the Playbook workflow.",
+                "Test multi-select batch approval UI.",
+                "Test PDF and STIX download actions."
+            ],
+            "Deliverables": [
+                "E2E test suite for Sentinel V3 in frontend-dev/cypress/e2e/."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Documentation",
+            "Title": "Update Sentinel V3 API Documentation",
+            "Objective": "Ensure all new endpoints (TAXII, Batch, Export, Auto-gen) are properly documented in Swagger/OpenAPI.",
+            "Tasks": [
+                "Update docstrings in FastAPI route handlers.",
+                "Verify OpenAPI JSON output includes new models (STIX, Playbook).",
+                "Export static API documentation for external integrators."
+            ],
+            "Deliverables": [
+                "Updated OpenAPI documentation and static HTML docs."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 2,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Review",
+            "Title": "Security Audit of Sentinel Layer",
+            "Objective": "Audit batch approve/reject endpoints, TAXII auth, and PDF generation for security vulnerabilities.",
+            "Tasks": [
+                "Test for Broken Object Level Authorization (BOLA) in playbook endpoints.",
+                "Verify TAXII basic auth/JWT validation.",
+                "Check PDF generation for path traversal and XSS."
+            ],
+            "Deliverables": [
+                "Security audit findings and patched vulnerabilities."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Playbook Template Optimization",
+            "Objective": "Refine Jinja2 templates for better readability and more accurate STIX/MITRE mapping.",
+            "Tasks": [
+                "Update Markdown templates to improve executive summary layout.",
+                "Ensure all Snort and Sigma rules are formatted correctly within playbooks.",
+                "Optimize template rendering speed."
+            ],
+            "Deliverables": [
+                "Optimized Jinja2 templates in backend/sentinel/templates/."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 2,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "UI Accessibility and Polish",
+            "Objective": "Fix contrast, ARIA labels, and responsive layout for the new Sentinel panels.",
+            "Tasks": [
+                "Run Lighthouse accessibility audit on Sentinel Dashboard.",
+                "Fix color contrast warnings in dark/light modes.",
+                "Ensure tables and batch actions are keyboard navigable."
+            ],
+            "Deliverables": [
+                "Accessibility fixes and 100% Lighthouse accessibility score."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Integration",
+            "Title": "Setup CI/CD pipeline for TAXII server and LLM tests",
+            "Objective": "Add Month 5 test suites to GitHub Actions to prevent regressions in Sentinel V3 features.",
+            "Tasks": [
+                "Update .github/workflows/python-app.yml to include TAXII feed tests.",
+                "Mock LLM responses in CI/CD pipeline.",
+                "Ensure PDF generation dependencies are installed in CI runner."
+            ],
+            "Deliverables": [
+                "Updated GitHub Actions pipeline passing all Month 5 tests."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "MITRE ATT&CK Framework Update",
+            "Objective": "Ensure the latest ATT&CK techniques (v14+) are mapped properly in the Sentinel layer.",
+            "Tasks": [
+                "Update MITRE ATT&CK JSON mappings.",
+                "Verify tactic and technique IDs for all 12 mapped attack scenarios.",
+                "Validate STIX objects reference the correct external references."
+            ],
+            "Deliverables": [
+                "Updated MITRE ATT&CK mapping definitions."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 3,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "Optimize Model Inference for Sentinel",
+            "Objective": "Cache LLM responses and optimize RAM usage during auto-generation.",
+            "Tasks": [
+                "Implement Redis caching for identical attack narrative prompts.",
+                "Reduce memory footprint of the anomaly detection pipeline.",
+                "Document hardware requirements for optimal V3 performance."
+            ],
+            "Deliverables": [
+                "Caching implementation and V3 hardware sizing guide."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 3,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "Dashboard Metrics Validation",
+            "Objective": "Ensure the stats panel shows accurate aggregate numbers and matches backend database state.",
+            "Tasks": [
+                "Validate UI metric cards (Total, Approved, Rejected) against DB queries.",
+                "Fix any chart rendering glitches with zero-data states.",
+                "Optimize API polling intervals for dashboard stats."
+            ],
+            "Deliverables": [
+                "Accurate, glitch-free dashboard analytics panel."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 4,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Documentation",
+            "Title": "V3.0 Release Candidate Preparation",
+            "Objective": "Draft release notes, changelog, and migration guides for Month 5 features.",
+            "Tasks": [
+                "Update CHANGELOG.md with Month 5 features.",
+                "Draft V3.0 release notes.",
+                "Write database migration instructions for V2 to V3 transition."
+            ],
+            "Deliverables": [
+                "CHANGELOG.md and V3.0 release notes."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 4,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Penetration Testing on Honeypots",
+            "Objective": "Verify deception layer stability and data integrity with all Month 5 pipeline changes active.",
+            "Tasks": [
+                "Run Nmap, Nikto, and Hydra against the 4 honeypots.",
+                "Verify that the V3 Sentinel layer successfully categorizes the attacks.",
+                "Confirm Snort/Sigma rules and playbooks are generated without errors."
+            ],
+            "Deliverables": [
+                "Penetration testing execution report and verified artifacts."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 4,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "Auto-Scheduler Robustness Testing",
+            "Objective": "Test edge cases and failure recovery for the background playbook scheduler.",
+            "Tasks": [
+                "Simulate database lock timeouts during generation.",
+                "Simulate LLM API failures to ensure grace degradation (fallback to templated playbook).",
+                "Verify email alerts trigger properly on critical failures."
+            ],
+            "Deliverables": [
+                "Robustness test results and error handling fixes."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 4,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "Cross-Browser Compatibility",
+            "Objective": "Test the Sentinel dashboard and PDF export on Firefox, Safari, and Edge.",
+            "Tasks": [
+                "Verify responsive layout and flexbox behavior across browsers.",
+                "Ensure PDF Blob download works correctly in Safari and Firefox.",
+                "Fix any browser-specific CSS rendering issues."
+            ],
+            "Deliverables": [
+                "Cross-browser compatibility validation and fixes."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Review",
+            "Title": "Final Sign-off and Merge",
+            "Objective": "Review all Month 5 PRs, merge to main, and tag the V3.0 release candidate.",
+            "Tasks": [
+                "Perform final code reviews on integration testing fixes.",
+                "Merge development branch to main.",
+                "Tag git release v3.0.0-rc1."
+            ],
+            "Deliverables": [
+                "Merged main branch and v3.0.0-rc1 tag."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Review",
+            "Title": "Incident Response Playbook Validation",
+            "Objective": "Validate generated PDFs, STIX bundles, and Markdown playbooks against real SOC expectations.",
+            "Tasks": [
+                "Review generated playbooks for actionable intelligence.",
+                "Verify STIX bundles can be imported into external tools (e.g., MISP, OpenCTI).",
+                "Confirm Snort rules compile without syntax errors."
+            ],
+            "Deliverables": [
+                "Playbook and Artifact validation sign-off."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 5,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Documentation",
+            "Title": "Final ML Performance Report",
+            "Objective": "Document precision/recall, latency, and resource usage for the final Month 5 architecture.",
+            "Tasks": [
+                "Generate ROC/AUC curves for the ensemble model.",
+                "Document end-to-end latency (from packet capture to STIX bundle).",
+                "Finalize the model_capabilities.yaml documentation."
+            ],
+            "Deliverables": [
+                "ML Performance Report for V3.0."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Documentation",
+            "Title": "Presentation Demo Prep",
+            "Objective": "Record a demo video of the Sentinel V3 workflow for the final project presentation.",
+            "Tasks": [
+                "Script the demo flow (Attack -> Detection -> Playbook -> Approval -> Export).",
+                "Record 1080p screen capture of the dashboard in action.",
+                "Edit video and add annotations for the final submission."
+            ],
+            "Deliverables": [
+                "Sentinel V3 demonstration video."
+            ],
+            "Estimate": 5
+        }
+    ]
+}
