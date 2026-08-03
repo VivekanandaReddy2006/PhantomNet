@@ -30,11 +30,15 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Response
+# pyrefly: ignore [missing-import]
 from fastapi.responses import JSONResponse
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from database.database import get_db
+# pyrefly: ignore [missing-import]
 from sentinel.models import SentinelPlaybook
 from schemas.taxii import (
     TaxiiApiRootResponse,
@@ -44,7 +48,9 @@ from schemas.taxii import (
     TaxiiErrorResponse,
 )
 
+# pyrefly: ignore [missing-import]
 from starlette.middleware.base import BaseHTTPMiddleware
+# pyrefly: ignore [missing-import]
 from starlette.requests import Request
 
 logger = logging.getLogger("api.taxii")
@@ -537,6 +543,11 @@ def get_collection_objects(
         le=1000,
         description="Maximum number of STIX objects to return. Max is 1000.",
     ),
+    next_token: Optional[int] = Query(
+        None,
+        alias="next",
+        description="Pagination offset index to fetch the next page of results.",
+    ),
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
@@ -579,9 +590,13 @@ def get_collection_objects(
             query = query.filter(SentinelPlaybook.created_at > filter_dt)
 
         if matched_col and matched_col.id.startswith("tactic-"):
+            # pyrefly: ignore [missing-import]
+            from sqlalchemy import func
             tactic_slug = matched_col.id.replace("tactic-", "")
             query = query.filter(SentinelPlaybook.tactic.isnot(None))
-            # We fetch first, then filter below since tactic might need slugification
+            query = query.filter(
+                func.lower(func.replace(func.replace(SentinelPlaybook.tactic, ' ', '-'), '/', '-')) == tactic_slug
+            )
         elif matched_col and matched_col.id.startswith("honeypot-"):
             port_map = {"cowrie-ssh": 22, "web-http": 80, "web-https": 443, "dionaea-mysql": 3306, "dionaea-ftp": 21}
             port = port_map.get(matched_col.alias)
@@ -591,20 +606,13 @@ def get_collection_objects(
         # Order by created_at to ensure consistent pagination
         query = query.order_by(SentinelPlaybook.created_at.asc())
 
+        if next_token is not None:
+            query = query.offset(next_token)
+
         # If a limit is provided, we limit the query. If not, use a default safe limit
         safe_limit = limit if limit is not None else 100
         
-        # We need to filter tactic dynamically due to slug matching logic
-        # For memory efficiency, we shouldn't fetch all. 
-        # But for now, we apply limit to the DB query to avoid huge memory footprint.
         playbooks = query.limit(safe_limit).all()
-
-        if matched_col and matched_col.id.startswith("tactic-"):
-            tactic_slug = matched_col.id.replace("tactic-", "")
-            playbooks = [
-                pb for pb in playbooks
-                if pb.tactic and pb.tactic.strip().lower().replace(" ", "-").replace("/", "-") == tactic_slug
-            ]
 
     except Exception as e:
         logger.error("Failed to query playbooks for collection objects: %s", e)
