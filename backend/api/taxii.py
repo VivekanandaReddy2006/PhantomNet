@@ -531,6 +531,12 @@ def get_collection_objects(
             "Example: 2026-07-01T00:00:00Z"
         ),
     ),
+    limit: Optional[int] = Query(
+        None,
+        ge=1,
+        le=1000,
+        description="Maximum number of STIX objects to return. Max is 1000.",
+    ),
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
@@ -574,19 +580,32 @@ def get_collection_objects(
 
         if matched_col and matched_col.id.startswith("tactic-"):
             tactic_slug = matched_col.id.replace("tactic-", "")
-            playbooks = [
-                pb for pb in query.all()
-                if pb.tactic and pb.tactic.strip().lower().replace(" ", "-").replace("/", "-") == tactic_slug
-            ]
+            query = query.filter(SentinelPlaybook.tactic.isnot(None))
+            # We fetch first, then filter below since tactic might need slugification
         elif matched_col and matched_col.id.startswith("honeypot-"):
             port_map = {"cowrie-ssh": 22, "web-http": 80, "web-https": 443, "dionaea-mysql": 3306, "dionaea-ftp": 21}
             port = port_map.get(matched_col.alias)
             if port:
-                playbooks = query.filter(SentinelPlaybook.dst_port == port).all()
-            else:
-                playbooks = query.all()
-        else:
-            playbooks = query.all()
+                query = query.filter(SentinelPlaybook.dst_port == port)
+
+        # Order by created_at to ensure consistent pagination
+        query = query.order_by(SentinelPlaybook.created_at.asc())
+
+        # If a limit is provided, we limit the query. If not, use a default safe limit
+        safe_limit = limit if limit is not None else 100
+        
+        # We need to filter tactic dynamically due to slug matching logic
+        # For memory efficiency, we shouldn't fetch all. 
+        # But for now, we apply limit to the DB query to avoid huge memory footprint.
+        playbooks = query.limit(safe_limit).all()
+
+        if matched_col and matched_col.id.startswith("tactic-"):
+            tactic_slug = matched_col.id.replace("tactic-", "")
+            playbooks = [
+                pb for pb in playbooks
+                if pb.tactic and pb.tactic.strip().lower().replace(" ", "-").replace("/", "-") == tactic_slug
+            ]
+
     except Exception as e:
         logger.error("Failed to query playbooks for collection objects: %s", e)
         err = TaxiiErrorResponse(

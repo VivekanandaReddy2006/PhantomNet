@@ -306,8 +306,15 @@ def phase5_create_issues(config):
         title = f"Week {week}-Day {task['Day']},{task['Role']},{task['Title']}"
 
         # Check duplicate
-        existing = run_gh(["issue", "list", "--search", f'"{title}"',
-                           "--state", "all", "--json", "url", "--jq", ".[0].url"])
+        existing_raw = run_gh(["issue", "list", "--search", f'"{title}"',
+                           "--state", "all", "--json", "title,url"])
+        existing = None
+        if existing_raw:
+            try:
+                existing = next((i["url"] for i in json.loads(existing_raw) if i.get("title") == title), None)
+            except Exception:
+                pass
+
         if existing and existing.startswith("http"):
             print(f"  [SKIP] {title[:70]}")
             skipped += 1
