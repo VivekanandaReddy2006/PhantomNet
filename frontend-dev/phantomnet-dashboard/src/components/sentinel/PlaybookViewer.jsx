@@ -174,7 +174,7 @@ const createMarkdownComponents = (checkedItems, toggleCheckbox, checkboxOffsets)
       : "default-table";
     return (
       <div className={`pbv-table-wrapper ${tableType}`}>
-        <div className="pbv-table-scroll">
+        <div className="pbv-table-scroll" tabIndex={0} aria-label="Horizontal scrollable table">
           <table {...props}>{children}</table>
         </div>
       </div>
@@ -802,6 +802,24 @@ const PlaybookViewer = ({
 
   const resolvedMarkdown = playbook_content || markdownContent;
 
+  const handleTabKeyDown = (e, index) => {
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      const nextIndex = (index + 1) % availableTabs.length;
+      setActiveTab(availableTabs[nextIndex].key);
+      setTimeout(() => {
+        document.getElementById(`pbv-tab-${availableTabs[nextIndex].key}`)?.focus();
+      }, 0);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const prevIndex = (index - 1 + availableTabs.length) % availableTabs.length;
+      setActiveTab(availableTabs[prevIndex].key);
+      setTimeout(() => {
+        document.getElementById(`pbv-tab-${availableTabs[prevIndex].key}`)?.focus();
+      }, 0);
+    }
+  };
+
   const handleRegenerateLLM = async () => {
     if (isRegeneratingLLM) return;
     if (!isAdminOrAnalyst) {
@@ -841,6 +859,51 @@ const PlaybookViewer = ({
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [isOpen, onClose, isFullscreen]);
+
+  /* ── Focus Trap and Initial Focus Management ── */
+  useEffect(() => {
+    if (!isOpen || !panelRef.current) return;
+    
+    // Focus the close button on mount to start tab sequence cleanly
+    const focusableElements = panelRef.current.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex="0"]'
+    );
+    if (focusableElements.length > 0) {
+      const closeBtn = Array.from(focusableElements).find(el => el.id === 'playbook-viewer-close-btn');
+      if (closeBtn) {
+        closeBtn.focus();
+      } else {
+        focusableElements[0].focus();
+      }
+    }
+
+    const handleTabTrap = (e) => {
+      if (e.key !== "Tab") return;
+      const focusables = Array.from(
+        panelRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]'
+        )
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        }
+      } else {
+        if (document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleTabTrap);
+    return () => document.removeEventListener("keydown", handleTabTrap);
+  }, [isOpen]);
 
   /* ── Lock body scroll when open ── */
   useEffect(() => {
@@ -1161,6 +1224,8 @@ const PlaybookViewer = ({
                 aria-selected={activeTab === tab.key}
                 aria-controls={`pbv-panel-${tab.key}`}
                 id={`pbv-tab-${tab.key}`}
+                tabIndex={activeTab === tab.key ? 0 : -1}
+                onKeyDown={(e) => handleTabKeyDown(e, availableTabs.findIndex(t => t.key === tab.key))}
               >
                 <span className="tab-indicator"></span>
                 <Icon className="pbv-tab-icon" />

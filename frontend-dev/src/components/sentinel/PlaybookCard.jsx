@@ -28,7 +28,19 @@ const PlaybookCard = ({
   const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
-    <div className={`playbook-card hud-font ${selected ? "selected" : ""}`} onClick={onClick}>
+    <div
+      className={`playbook-card hud-font ${selected ? "selected" : ""}`}
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick && onClick(e);
+        }
+      }}
+      aria-label={`Playbook: ${title}, Severity: ${severityLabel}, Status: ${statusLabel}`}
+    >
       {/* HUD Corners */}
       <div className="hud-corner top-left"></div>
       <div className="hud-corner bottom-right"></div>
