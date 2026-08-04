@@ -357,6 +357,7 @@ class LLMService:
             # Use asyncio.timeout (or wait_for if on older python, but 3.11+ supports timeout)
             # Actually, using wait_for is safer across python versions if timeout doesn't exist
             async def _do_request():
+                global last_generation_time_ms
                 async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
                     if stream:
                         # ---- Streaming path: aggregate NDJSON chunks ----
@@ -389,7 +390,6 @@ class LLMService:
     
                         raw_text = "".join(collected_tokens)
                         latency_ms = (time.time() - start_time) * 1000
-                        global last_generation_time_ms
                         last_generation_time_ms = latency_ms
     
                         if latency_ms > 25000:
@@ -414,7 +414,6 @@ class LLMService:
                         result = response.json()
                         raw_text = result.get("response", "")
                         latency_ms = (time.time() - start_time) * 1000
-                        global last_generation_time_ms
                         last_generation_time_ms = latency_ms
     
                         if latency_ms > 25000:
@@ -428,19 +427,17 @@ class LLMService:
                     clean_text = self._clean_markdown(raw_text)
                     return clean_text
 
-            async def _do_request_with_semaphore():
-                async with sem:
-                    return await _do_request()
-
-            # Wait for semaphore and execute request with an overall 65 second timeout
-            return await asyncio.wait_for(
-                _do_request_with_semaphore(),
-                timeout=65.0
-            )
+            # Wait for semaphore without a timeout to support long queues
+            async with sem:
+                # Execute request with an overall 65 second timeout
+                return await asyncio.wait_for(
+                    _do_request(),
+                    timeout=65.0
+                )
 
         except asyncio.TimeoutError:
             logger.warning(
-                "LLMService._call_ollama: timeout waiting for semaphore or executing."
+                "LLMService._call_ollama: request execution timed out after 65 seconds."
             )
             return ""
         except httpx.TimeoutException as exc:
@@ -923,16 +920,23 @@ async def generate_playbook_summary(
         if llm_enabled:
             try:
                 start_time = time.time()
-                # Week 17 Day 3: strict 60-second connect + read timeout
-                async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
-                    response = await client.post(
-                        f"{SENTINEL_LLM_HOST}/api/generate",
-                        json={
-                            "model": SENTINEL_LLM_MODEL,
-                            "prompt": prompt,
-                            "stream": False,
-                        },
-                    )
+                sem = get_llm_semaphore()
+                # Wait for semaphore to queue requests
+                async with sem:
+                    # Execute request inside semaphore
+                    async def _do_generate():
+                        async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
+                            return await client.post(
+                                f"{SENTINEL_LLM_HOST}/api/generate",
+                                json={
+                                    "model": SENTINEL_LLM_MODEL,
+                                    "prompt": prompt,
+                                    "stream": False,
+                                },
+                            )
+                    
+                    response = await asyncio.wait_for(_do_generate(), timeout=65.0)
+                    
                     if response.status_code == 200:
                         latency_ms = (time.time() - start_time) * 1000
                         last_generation_time_ms = latency_ms
@@ -954,6 +958,10 @@ async def generate_playbook_summary(
                             "Ollama API returned status %d. Using local fallback.",
                             response.status_code,
                         )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    "Ollama request execution timed out after 65 seconds. Using local fallback."
+                )
             except httpx.TimeoutException as exc:
                 logger.warning(
                     "Ollama timeout (60 s) at %s: %s. Using local fallback.",
