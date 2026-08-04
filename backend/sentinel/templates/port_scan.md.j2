@@ -553,5 +553,25 @@ index=firewall-logs src_zone!="{{ firewall_zone | default("*") }}"
 - `forensics/firewall_acl_snapshot_{{ firewall_zone | default("zone") }}_{{ generated_at | default("timestamp") }}.txt`
 {% endif %}
 
+{% if snort_rules is defined and snort_rules %}
+### 🚨 Snort Rules
+
+{% for rule in snort_rules %}
+```snort
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
+{% if sigma_rules is defined and sigma_rules %}
+### 🛡️ Sigma Rules
+
+{% for rule in sigma_rules %}
+```yaml
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
 ---
 {% endblock artifacts %}
