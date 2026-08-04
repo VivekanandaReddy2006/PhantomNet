@@ -196,6 +196,12 @@ class BatchReviewRequest(BaseModel):
         return v
 
 
+class PlaybookDetailResponse(BaseModel):
+    """Response wrapper for a single Sentinel Playbook."""
+    status: str
+    playbook: PlaybookDetail
+
+
 # ---------------------------------------------------------------------------
 # Helper: serialise a SentinelPlaybook ORM row to dict
 # ---------------------------------------------------------------------------
@@ -378,7 +384,12 @@ def list_playbooks(
 # 2. GET /api/sentinel/playbooks/{id} — Get single playbook by ID
 # ---------------------------------------------------------------------------
 
-@router.get("/playbooks/{playbook_id}", response_model=Dict[str, Any])
+@router.get(
+    "/playbooks/{playbook_id}",
+    response_model=PlaybookDetailResponse,
+    summary="Get Playbook Detail",
+    description="Retrieve a single Sentinel playbook by its ID, including full content and rules.",
+)
 def get_playbook(
     playbook_id: int,
     db: Session = Depends(get_db),
@@ -555,7 +566,12 @@ def get_mitre_mappings() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # 5. POST /api/sentinel/generate — Trigger manual playbook generation
 # ---------------------------------------------------------------------------
-@router.post("/generate", response_model=Dict[str, Any])
+@router.post(
+    "/generate",
+    response_model=GenerateResponse,
+    summary="Manual Playbook Generation",
+    description="Trigger manual playbook generation for a campaign (Auto-gen).",
+)
 def generate_playbook(
     request: GenerateRequest,
     background_tasks: BackgroundTasks,
@@ -770,7 +786,12 @@ def reject_playbook(
 _VALID_EXPORT_FORMATS = {"markdown", "json", "stix", "pdf"}
 
 
-@router.post("/playbooks/{playbook_id}/export", response_class=StreamingResponse)
+@router.post(
+    "/playbooks/{playbook_id}/export",
+    response_class=StreamingResponse,
+    summary="Export Playbook",
+    description="Export a Sentinel playbook as a downloadable file (Markdown, JSON, STIX, or PDF).",
+)
 def export_playbook(
     playbook_id: int = Path(..., ge=1, description="Database ID of the playbook to export"),
     format: str = Query(
@@ -1401,7 +1422,12 @@ def get_mitre_matrix(db: Session = Depends(get_db)) -> Dict[str, Any]:
 # 14. POST /api/sentinel/playbooks/batch/approve — Batch approve playbooks
 # ---------------------------------------------------------------------------
 
-@router.post("/playbooks/batch/approve", response_model=Dict[str, Any])
+@router.post(
+    "/playbooks/batch/approve",
+    response_model=Dict[str, Any],
+    summary="Batch Approve Playbooks",
+    description="Approve multiple pending or rejected playbooks in a single transaction.",
+)
 def batch_approve_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
@@ -1461,7 +1487,12 @@ def batch_approve_playbooks(
 # 15. POST /api/sentinel/playbooks/batch/reject — Batch reject playbooks
 # ---------------------------------------------------------------------------
 
-@router.post("/playbooks/batch/reject", response_model=Dict[str, Any])
+@router.post(
+    "/playbooks/batch/reject",
+    response_model=Dict[str, Any],
+    summary="Batch Reject Playbooks",
+    description="Reject multiple pending or approved playbooks in a single transaction.",
+)
 def batch_reject_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
