@@ -628,5 +628,25 @@ index=db-audit db_name="{{ db_name | default("*") }}"
 - `forensics/{{ target_ip | default("unknown_app") }}/source_code_review_{{ generated_at | default("timestamp") }}.md`
 {% endif %}
 
+{% if snort_rules is defined and snort_rules %}
+### 🚨 Snort Rules
+
+{% for rule in snort_rules %}
+```snort
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
+{% if sigma_rules is defined and sigma_rules %}
+### 🛡️ Sigma Rules
+
+{% for rule in sigma_rules %}
+```yaml
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
 ---
 {% endblock artifacts %}

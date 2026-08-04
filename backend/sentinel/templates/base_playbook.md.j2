@@ -52,25 +52,22 @@
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 2 · SUMMARY
    ────────────────────────────────────────────────────────────────────────── #}
-## 📋 Summary
+## 📋 Executive Summary
 
 > **Campaign Overview:** {{ campaign_overview | default("An automated detection triggered this playbook. Review the IOC table and ATT&CK mapping below before executing containment steps.") }}
 
-### Trigger Context
+**Trigger Context & Assets**
+- **Trigger Type:** `{{ trigger_type | default("threshold_breach") }}`
+- **Condition:** `{{ trigger_condition | default("N/A") }}`
+- **Time:** `{{ detection_time | default(generated_at | default("N/A")) }}`
+- **Event:** **{{ event_summary | default("N/A") }}**
 
-| Property            | Value |
-|---------------------|-------|
-| **Trigger Type**    | `{{ trigger_type | default("threshold_breach") }}` |
-| **Trigger Condition** | `{{ trigger_condition | default("N/A") }}` |
-| **Detection Time**  | `{{ detection_time | default(generated_at | default("N/A")) }}` |
-| **Time Range**      | `{{ time_range | default("N/A") }}` |
-| **Event Summary**   | **{{ event_summary | default("N/A") }}** |
-| **Source IP**       | `{{ source_ip | default("N/A") }}` |
-| **Target IP**       | `{{ target_ip | default("N/A") }}` |
-| **Honeypot Node**   | `{{ honeypot_node | default("N/A") }}` |
+**Network Footprint**
+- **Source IP:** `{{ source_ip | default("N/A") }}`
+- **Target IP:** `{{ target_ip | default("N/A") }}`
+- **Honeypot:** `{{ honeypot_node | default("N/A") }}`
 
-### Affected Assets
-
+**Affected Assets**
 {% if affected_assets is defined and affected_assets %}
 {% for asset in affected_assets %}
 - `{{ asset }}`
@@ -79,14 +76,10 @@
 - `{{ target_ip | default("Unknown – investigate immediately") }}`
 {% endif %}
 
-### Incident Priority
-
-| Dimension       | Assessment |
-|-----------------|------------|
-| **Confidentiality Impact** | {{ confidentiality_impact | default("High") }} |
-| **Integrity Impact**       | {{ integrity_impact | default("Medium") }} |
-| **Availability Impact**    | {{ availability_impact | default("Medium") }} |
-| **Blast Radius**           | {{ blast_radius | default("Localised to honeypot segment") }} |
+**Incident Priority Assessment**
+| Confidentiality | Integrity | Availability | Blast Radius |
+|---|---|---|---|
+| {{ confidentiality_impact | default("High") }} | {{ integrity_impact | default("Medium") }} | {{ availability_impact | default("Medium") }} | {{ blast_radius | default("Localised to honeypot segment") }} |
 
 ---
 {% endblock summary %}
@@ -366,6 +359,26 @@ index={{ siem_index | default("siem-alerts-*") }} attack_pattern="{{ attack_patt
   | table _time, source_ip, target_ip, event_type, severity
 {%- endif %}
 ```
+
+{% if snort_rules is defined and snort_rules %}
+### 🚨 Snort Rules
+
+{% for rule in snort_rules %}
+```snort
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
+{% if sigma_rules is defined and sigma_rules %}
+### 🛡️ Sigma Rules
+
+{% for rule in sigma_rules %}
+```yaml
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
 
 ---
 {% endblock artifacts %}

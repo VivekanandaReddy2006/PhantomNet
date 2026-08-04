@@ -529,5 +529,25 @@ index=syslog source="/var/log/fail2ban.log" action="Ban" ip="{{ source_ip | defa
 - `forensics/{{ target_ip | default("unknown_host") }}/fail2ban_status.txt`
 {% endif %}
 
+{% if snort_rules is defined and snort_rules %}
+### 🚨 Snort Rules
+
+{% for rule in snort_rules %}
+```snort
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
+{% if sigma_rules is defined and sigma_rules %}
+### 🛡️ Sigma Rules
+
+{% for rule in sigma_rules %}
+```yaml
+{{ rule }}
+```
+{% endfor %}
+{% endif %}
+
 ---
 {% endblock artifacts %}
