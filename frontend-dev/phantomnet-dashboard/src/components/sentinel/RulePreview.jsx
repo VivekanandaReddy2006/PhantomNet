@@ -172,11 +172,13 @@ const RulePreview = ({
       {/* Toolbar */}
       <div className="rule-preview-toolbar">
         {/* Tab Toggle */}
-        <div className="rule-tab-group">
+        <div className="rule-tab-group" role="tablist" aria-label="Rule syntax selection">
           {snortRule && (
             <button
               className={`rule-tab ${activeTab === "snort" ? "active" : ""}`}
               onClick={() => { setActiveTab("snort"); setCopied(false); }}
+              role="tab"
+              aria-selected={activeTab === "snort"}
             >
               <span className="tab-dot"></span>
               <FaShieldAlt style={{ fontSize: "0.6rem" }} />
@@ -187,6 +189,8 @@ const RulePreview = ({
             <button
               className={`rule-tab ${activeTab === "sigma" ? "active" : ""}`}
               onClick={() => { setActiveTab("sigma"); setCopied(false); }}
+              role="tab"
+              aria-selected={activeTab === "sigma"}
             >
               <span className="tab-dot"></span>
               <FaFileCode style={{ fontSize: "0.6rem" }} />

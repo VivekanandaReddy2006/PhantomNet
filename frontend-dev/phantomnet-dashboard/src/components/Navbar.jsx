@@ -113,11 +113,15 @@ const Navbar = () => {
             if (link.submenu) {
               return (
                 <div key={link.label} className="nav-item-dropdown">
-                  <div className={`nav-link dropdown-trigger ${isParentActive(link) ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className={`nav-link dropdown-trigger ${isParentActive(link) ? "active" : ""}`}
+                    aria-haspopup="true"
+                  >
                     <Icon className="nav-icon" />
                     <span>{link.label}</span>
                     <FaChevronDown className="dropdown-arrow" />
-                  </div>
+                  </button>
                   <div className="submenu-dropdown">
                     {link.submenu.map((sub) => {
                       const SubIcon = sub.icon;

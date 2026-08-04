@@ -163,8 +163,8 @@ body[data-theme="light"] .sentinel-card-title { color: #334155; }
   text-transform: uppercase;
 }
 
-body[data-theme="dark"] .sentinel-card-subtitle { color: #475569; }
-body[data-theme="light"] .sentinel-card-subtitle { color: #94a3b8; }
+body[data-theme="dark"] .sentinel-card-subtitle { color: #94a3b8; }
+body[data-theme="light"] .sentinel-card-subtitle { color: #475569; }
 
 .sentinel-card-bar {
   width: 100%;
@@ -276,11 +276,11 @@ body[data-theme="light"] .sentinel-chart-title {
 }
 
 body[data-theme="dark"] .sentinel-chart-subtitle {
-  color: #475569;
+  color: #94a3b8;
 }
 
 body[data-theme="light"] .sentinel-chart-subtitle {
-  color: #94a3b8;
+  color: #475569;
 }
 
 /* --- SVG Chart Canvas --- */
@@ -454,12 +454,12 @@ body[data-theme="light"] .timeline-gridline {
 .timeline-axis-text {
   font-size: 8px;
   font-family: 'JetBrains Mono', monospace;
-  fill: #475569;
+  fill: #cbd5e1;
   font-weight: 500;
 }
 
 body[data-theme="light"] .timeline-axis-text {
-  fill: #94a3b8;
+  fill: #475569;
 }
 
 .timeline-line {

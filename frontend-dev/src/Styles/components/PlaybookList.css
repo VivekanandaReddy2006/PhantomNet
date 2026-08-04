@@ -258,6 +258,15 @@ body[data-theme="light"] .toolbar-selected-count {
     outline: none;
 }
 
+.toolbar-btn:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+}
+
+body[data-theme="light"] .toolbar-btn:focus-visible {
+    outline-color: #6d28d9;
+}
+
 .toolbar-btn .btn-icon {
     font-size: 0.7rem;
 }
@@ -310,6 +319,37 @@ body[data-theme="light"] .btn-batch-cancel:hover {
     border-color: rgba(0, 0, 0, 0.2);
 }
 
+body[data-theme="light"] .toolbar-selected-count .count-number {
+    color: #6d28d9;
+    text-shadow: none;
+}
+
+body[data-theme="light"] .btn-batch-approve {
+    background: rgba(5, 150, 105, 0.08);
+    border-color: rgba(5, 150, 105, 0.3);
+    color: #047857;
+}
+
+body[data-theme="light"] .btn-batch-approve:hover {
+    background: #059669;
+    color: #ffffff;
+    border-color: #059669;
+    box-shadow: 0 0 15px rgba(5, 150, 105, 0.3);
+}
+
+body[data-theme="light"] .btn-batch-reject {
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.3);
+    color: #b91c1c;
+}
+
+body[data-theme="light"] .btn-batch-reject:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 0 15px rgba(220, 38, 38, 0.3);
+}
+
 
 /* ─── Batch Confirmation Modal ─── */
 .batch-confirm-card {
@@ -324,9 +364,9 @@ body[data-theme="light"] .btn-batch-cancel:hover {
 }
 
 .btn-confirm-approve {
-    background: #10b981;
+    background: #059669;
     color: #ffffff;
-    border: 1px solid #10b981;
+    border: 1px solid #059669;
     padding: 0.5rem 1.25rem;
     font-size: 0.8rem;
     font-weight: 700;
@@ -339,9 +379,15 @@ body[data-theme="light"] .btn-batch-cancel:hover {
     align-items: center;
     justify-content: center;
     text-transform: uppercase;
+    outline: none;
+}
+.btn-confirm-approve:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
 }
 .btn-confirm-approve:hover:not(:disabled) {
-    background: #059669;
+    background: #047857;
+    border-color: #047857;
     box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
 }
 .btn-confirm-approve:disabled {
@@ -350,9 +396,9 @@ body[data-theme="light"] .btn-batch-cancel:hover {
 }
 
 .btn-confirm-reject {
-    background: #ef4444;
+    background: #dc2626;
     color: #ffffff;
-    border: 1px solid #ef4444;
+    border: 1px solid #dc2626;
     padding: 0.5rem 1.25rem;
     font-size: 0.8rem;
     font-weight: 700;
@@ -365,9 +411,15 @@ body[data-theme="light"] .btn-batch-cancel:hover {
     align-items: center;
     justify-content: center;
     text-transform: uppercase;
+    outline: none;
+}
+.btn-confirm-reject:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
 }
 .btn-confirm-reject:hover:not(:disabled) {
-    background: #dc2626;
+    background: #b91c1c;
+    border-color: #b91c1c;
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 .btn-confirm-reject:disabled {

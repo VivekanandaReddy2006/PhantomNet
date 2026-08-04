@@ -430,3 +430,70 @@ body[data-theme="light"] .toast-error {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
+
+/* Focus Ring Outline for ApprovalControls */
+.approval-actions button:focus-visible,
+.confirm-modal-footer button:focus-visible,
+.analyst-input-group input:focus-visible,
+.toast-close:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+}
+
+body[data-theme="light"] .approval-actions button:focus-visible,
+body[data-theme="light"] .confirm-modal-footer button:focus-visible,
+body[data-theme="light"] .analyst-input-group input:focus-visible,
+body[data-theme="light"] .toast-close:focus-visible {
+    outline-color: #6d28d9;
+}
+
+/* Light Theme High Contrast for ApprovalControls */
+body[data-theme="light"] .approval-status-label {
+    color: #475569;
+}
+
+body[data-theme="light"] .btn-approve {
+    background: rgba(5, 150, 105, 0.08);
+    color: #047857;
+    border-color: rgba(5, 150, 105, 0.25);
+}
+
+body[data-theme="light"] .btn-approve:hover:not(:disabled) {
+    background: #059669;
+    color: #ffffff;
+    border-color: #059669;
+}
+
+body[data-theme="light"] .btn-approve.active-approved {
+    background: rgba(5, 150, 105, 0.15);
+    color: #047857;
+    border-color: rgba(5, 150, 105, 0.4);
+}
+
+body[data-theme="light"] .btn-reject {
+    background: rgba(220, 38, 38, 0.08);
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.25);
+}
+
+body[data-theme="light"] .btn-reject:hover:not(:disabled) {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+body[data-theme="light"] .btn-reject.active-rejected {
+    background: rgba(220, 38, 38, 0.15);
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, 0.4);
+}
+
+body[data-theme="light"] .confirm-desc {
+    color: #475569 !important;
+}
+
+body[data-theme="light"] .analyst-input-group label {
+    color: #6d28d9;
+}
+

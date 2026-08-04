@@ -49,6 +49,58 @@ const ApprovalControls = ({ playbookId, status, onStatusChange }) => {
     }
   }, [toast]);
 
+  // Escape key listener for confirmation modal
+  useEffect(() => {
+    if (!confirmType) return;
+    const handleConfirmKey = (e) => {
+      if (e.key === "Escape") {
+        setConfirmType(null);
+      }
+    };
+    document.addEventListener("keydown", handleConfirmKey);
+    return () => document.removeEventListener("keydown", handleConfirmKey);
+  }, [confirmType]);
+
+  // Focus trap for confirmation modal
+  useEffect(() => {
+    if (!confirmType) return;
+    const modalElement = document.querySelector(".confirm-modal-card");
+    if (!modalElement) return;
+
+    // Focus initial input
+    const inputEl = modalElement.querySelector("#analyst-name-input");
+    if (inputEl) {
+      inputEl.focus();
+    }
+
+    const handleConfirmTabTrap = (e) => {
+      if (e.key !== "Tab") return;
+      const focusables = Array.from(
+        modalElement.querySelectorAll(
+          'button:not([disabled]), input:not([disabled])'
+        )
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          last.focus();
+          e.preventDefault();
+        }
+      } else {
+        if (document.activeElement === last) {
+          first.focus();
+          e.preventDefault();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleConfirmTabTrap);
+    return () => document.removeEventListener("keydown", handleConfirmTabTrap);
+  }, [confirmType]);
+
   const handleReviewAction = async (action) => {
     setLoading(true);
     setError(null);

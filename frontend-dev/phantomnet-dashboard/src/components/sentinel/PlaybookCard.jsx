@@ -35,6 +35,16 @@ const PlaybookCard = ({
         if (disabled) return;
         onClick && onClick(e);
       }}
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick && onClick(e);
+        }
+      }}
+      aria-label={`Playbook: ${title}, Severity: ${severityLabel}, Status: ${statusLabel}`}
     >
       {/* HUD Corners */}
       <div className="hud-corner top-left"></div>

@@ -179,6 +179,7 @@ const PlaybookList = ({
                 onChange={handleSelectAllChange}
                 disabled={loading}
                 className="playbook-list-header-checkbox"
+                aria-label="Select all playbooks"
               />
               <span className="select-all-text">
                 {isAllSelected ? "DESELECT ALL" : "SELECT ALL"} ({playbooks.length} VISIBLE)

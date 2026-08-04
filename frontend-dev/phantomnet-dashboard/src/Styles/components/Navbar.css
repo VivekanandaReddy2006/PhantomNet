@@ -221,6 +221,10 @@ body[data-theme="light"] .toggle-label {
 }
 
 .dropdown-trigger {
+    background: none;
+    border: none;
+    font-family: inherit;
+    color: inherit;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -233,7 +237,8 @@ body[data-theme="light"] .toggle-label {
     transition: transform 0.25s ease;
 }
 
-.nav-item-dropdown:hover .dropdown-arrow {
+.nav-item-dropdown:hover .dropdown-arrow,
+.nav-item-dropdown:focus-within .dropdown-arrow {
     transform: rotate(180deg);
 }
 
@@ -257,7 +262,8 @@ body[data-theme="light"] .toggle-label {
     z-index: 200;
 }
 
-.nav-item-dropdown:hover .submenu-dropdown {
+.nav-item-dropdown:hover .submenu-dropdown,
+.nav-item-dropdown:focus-within .submenu-dropdown {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -374,3 +380,17 @@ body[data-theme="light"] .sentinel-nav-badge {
         box-shadow: 0 0 16px rgba(239, 68, 68, 0.8);
     }
 }
+
+/* Focus Ring Outline for Navbar links and buttons */
+.nav-link:focus-visible,
+.submenu-link:focus-visible,
+.navbar-logo:focus-visible {
+    outline: 2px solid #22d3ee;
+    outline-offset: 2px;
+}
+
+body[data-theme="light"] .nav-link:focus-visible,
+body[data-theme="light"] .submenu-link:focus-visible,
+body[data-theme="light"] .navbar-logo:focus-visible {
+    outline-color: #2563eb;
+}
