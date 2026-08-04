@@ -45,6 +45,7 @@ from schemas.taxii import (
     TaxiiCollectionResource,
     TaxiiCollectionsResponse,
     TaxiiDiscoveryResponse,
+    TaxiiEnvelopeResponse,
     TaxiiErrorResponse,
 )
 
@@ -520,11 +521,13 @@ def parse_added_after(
 
 @router.get(
     "/phantomnet/collections/{id}/objects/",
+    response_model=TaxiiEnvelopeResponse,
     summary="Get TAXII Collection STIX Objects",
     description="Returns a STIX 2.1 bundle containing objects for the requested collection.",
 )
 @router.get(
     "/phantomnet/collections/{id}/objects",
+    response_model=TaxiiEnvelopeResponse,
     include_in_schema=False,
 )
 def get_collection_objects(
@@ -552,6 +555,14 @@ def get_collection_objects(
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
 ) -> JSONResponse:
+    """
+    Retrieve STIX 2.1 objects from a specific TAXII collection.
+    
+    Supports pagination via `limit` and `next` tokens, and time-based filtering 
+    using the `added_after` query parameter.
+    
+    Returns a TAXII envelope containing the STIX objects.
+    """
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=True)
     if err_resp:
         return err_resp
