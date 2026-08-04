@@ -32,10 +32,12 @@ from fastapi.testclient import TestClient
 
 from sentinel.models import SentinelPlaybook
 from database.database import Base, engine, SessionLocal, get_db
-from api.taxii import router as taxii_router
+from api.taxii import router as taxii_router, get_taxii_user
+from database.models import User
 
 app = FastAPI()
 app.include_router(taxii_router)
+app.dependency_overrides[get_taxii_user] = lambda: User(username="testuser", role="Admin", status="active")
 
 TAXII_CT = "application/taxii+json;version=2.1"
 STIX_CT = "application/stix+json;version=2.1"

@@ -38,6 +38,9 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from database.database import get_db
+from database.models import User
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
+from middleware.auth import decode_token, verify_password
 # pyrefly: ignore [missing-import]
 from sentinel.models import SentinelPlaybook
 from schemas.taxii import (
@@ -60,6 +63,32 @@ TAXII_MEDIA_TYPE = "application/taxii+json;version=2.1"
 STIX_MEDIA_TYPE = "application/stix+json;version=2.1"
 
 router = APIRouter(prefix="/taxii2", tags=["TAXII 2.1 Feed"])
+
+basic_auth = HTTPBasic(auto_error=False)
+bearer_auth = HTTPBearer(auto_error=False)
+
+def get_taxii_user(
+    basic: Optional[HTTPBasicCredentials] = Depends(basic_auth),
+    bearer: Optional[HTTPAuthorizationCredentials] = Depends(bearer_auth),
+    db: Session = Depends(get_db)
+) -> User:
+    if bearer:
+        token_data = decode_token(bearer.credentials)
+        if token_data:
+            user = db.query(User).filter(User.username == token_data.get("sub")).first()
+            if user and user.status == "active":
+                return user
+    if basic:
+        user = db.query(User).filter(User.username == basic.username).first()
+        if user and user.status == "active" and verify_password(basic.password, user.hashed_password):
+            return user
+            
+    err = TaxiiErrorResponse(
+        title="Unauthorized",
+        description="Invalid or missing authentication credentials.",
+        http_status="401",
+    )
+    raise HTTPException(status_code=401, detail=err.model_dump())
 
 
 def check_taxii_headers(
@@ -323,6 +352,7 @@ def get_taxii_collections(db: Session) -> List[TaxiiCollectionResource]:
 def taxii_discovery(
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -353,6 +383,7 @@ def taxii_discovery(
 def taxii_api_root(
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -384,6 +415,7 @@ def list_collections(
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -417,6 +449,7 @@ def get_collection_detail(
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -554,6 +587,7 @@ def get_collection_objects(
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     """
     Retrieve STIX 2.1 objects from a specific TAXII collection.

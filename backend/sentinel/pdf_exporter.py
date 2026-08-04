@@ -892,12 +892,19 @@ def _build_html(playbook: Any) -> str:
 # xhtml2pdf renderer
 # ---------------------------------------------------------------------------
 
+def _safe_link_callback(uri, rel):
+    """Prevent xhtml2pdf from accessing local files to mitigate SSRF / Path Traversal."""
+    if uri.startswith("http://") or uri.startswith("https://"):
+        return uri
+    logger.warning("Blocked local file access in PDF generation: %s", uri)
+    return None
+
 def _render_xhtml2pdf(html: str) -> bytes:
     """Render HTML to PDF bytes using xhtml2pdf/pisa."""
     from xhtml2pdf import pisa  # type: ignore[import]
 
     pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer, encoding="utf-8")
+    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer, encoding="utf-8", link_callback=_safe_link_callback)
     if pisa_status.err:
         raise RuntimeError(f"xhtml2pdf error code {pisa_status.err}")
     data = pdf_buffer.getvalue()
