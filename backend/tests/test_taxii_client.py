@@ -29,19 +29,21 @@ try:
 except ImportError:
     TAXII2_CLIENT_AVAILABLE = False
 
-try:
-    from backend.api.taxii import router as taxii_router, TaxiiContentNegotiationMiddleware
-    from backend.database.database import SessionLocal
-    from backend.sentinel.models import SentinelPlaybook
-except ImportError:
-    from api.taxii import router as taxii_router, TaxiiContentNegotiationMiddleware
-    from database.database import SessionLocal
-    from sentinel.models import SentinelPlaybook
+import sys
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from api.taxii import router as taxii_router, TaxiiContentNegotiationMiddleware, get_taxii_user
+from database.database import SessionLocal
+from sentinel.models import SentinelPlaybook
+from database.models import User
 
 
 app = FastAPI()
 app.add_middleware(TaxiiContentNegotiationMiddleware)
 app.include_router(taxii_router)
+app.dependency_overrides[get_taxii_user] = lambda: User(username="testuser", role="Admin", status="active")
 
 
 @pytest.fixture(scope="module")

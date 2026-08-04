@@ -58,7 +58,7 @@ from sentinel.mitre_mapper import get_all_techniques
 # pyrefly: ignore [missing-import]
 from sentinel.sentinel_service import SentinelService
 
-from middleware.auth import get_current_user
+from middleware.auth import get_current_user, require_role
 from database.models import User
 from middleware.rate_limit import rate_limit_dependency
 
@@ -645,6 +645,7 @@ def approve_playbook(
     playbook_id: int = Path(..., ge=1, description="Database ID of the playbook to approve"),
     body: ReviewRequest = ...,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("Admin", "Analyst")),
 ) -> Dict[str, Any]:
     """
     Approve a Sentinel playbook.
@@ -719,6 +720,7 @@ def reject_playbook(
     playbook_id: int = Path(..., ge=1, description="Database ID of the playbook to reject"),
     body: ReviewRequest = ...,
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("Admin", "Analyst")),
 ) -> Dict[str, Any]:
     """
     Reject a Sentinel playbook.
@@ -1431,7 +1433,7 @@ def get_mitre_matrix(db: Session = Depends(get_db)) -> Dict[str, Any]:
 def batch_approve_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("Admin", "Analyst")),
     _: None = Depends(rate_limit_dependency),
 ) -> Dict[str, Any]:
     """
@@ -1496,7 +1498,7 @@ def batch_approve_playbooks(
 def batch_reject_playbooks(
     body: BatchReviewRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("Admin", "Analyst")),
     _: None = Depends(rate_limit_dependency),
 ) -> Dict[str, Any]:
     """
