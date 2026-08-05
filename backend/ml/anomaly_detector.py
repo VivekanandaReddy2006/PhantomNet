@@ -51,7 +51,7 @@ class AnomalyDetector:
             feature_vector = list(feature_dict.values())  # preserve order
             X.append(feature_vector)
 
-        X = np.array(X, dtype=float)
+        X = np.array(X, dtype=np.float32)
 
         # Train Isolation Forest
         self.model.fit(X)
@@ -73,7 +73,7 @@ class AnomalyDetector:
 
         # Extract features
         feature_dict = self.extractor.extract_features(log_entry)
-        vector = np.array(list(feature_dict.values()), dtype=float).reshape(1, -1)
+        vector = np.array(list(feature_dict.values()), dtype=np.float32).reshape(1, -1)
 
         # -------- LATENCY MEASUREMENT (ML INFERENCE ONLY) --------
         start_time = time.perf_counter()
