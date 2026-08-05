@@ -39,4 +39,4 @@ jobs:
 
     - name: Run Month 5 Tests (TAXII, LLM, PDF)
       run: |
-        python -m pytest backend/tests/test_taxii.py backend/tests/test_taxii_client.py backend/tests/test_llm_service.py backend/tests/test_sentinel_service_llm.py tests/test_pdf_export.py -v
+        python -m pytest backend/tests/test_taxii.py backend/tests/test_taxii_client.py backend/tests/test_llm_service.py backend/tests/test_sentinel_service_llm.py test_pdf_export.py -v
