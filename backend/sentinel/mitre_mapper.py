@@ -73,6 +73,14 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger("sentinel.mitre_mapper")
 
 # ---------------------------------------------------------------------------
+# ATT&CK Framework Version Metadata (v14, released Oct 2023)
+# All 12 technique IDs below are verified against ATT&CK v14 Enterprise matrix.
+# Spec: https://attack.mitre.org/resources/updates/updates-october-2023/
+# ---------------------------------------------------------------------------
+ATTACK_VERSION: str = "14.1"
+ATTACK_SPEC_VERSION: str = "2.1.0"
+
+# ---------------------------------------------------------------------------
 # MITRE ATT&CK Technique Lookup Table
 # Key   : signature name (matches SignatureEngine output exactly)
 # Value : ATT&CK technique dict (signature field populated by map_signature())
