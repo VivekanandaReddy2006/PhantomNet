@@ -32,6 +32,7 @@ for _p in (_ROOT, _BACKEND):
         sys.path.insert(0, _p)
 
 # ── imports ───────────────────────────────────────────────────────────────────
+# pyrefly: ignore [missing-import]
 from sentinel.mitre_mapper import (
     get_all_mappings,
     map_signature,
