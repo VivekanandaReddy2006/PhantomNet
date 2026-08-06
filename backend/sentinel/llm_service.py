@@ -58,8 +58,14 @@ import os
 import re
 import threading
 import time
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+
+try:
+    import redis
+except ImportError:
+    redis = None
 
 # Week 17, Day 2: structured prompt templates
 try:
@@ -211,6 +217,23 @@ class LLMService:
         if self.enabled:
             self._validate_config()
 
+        self._redis = None
+        if redis:
+            try:
+                self._redis = redis.Redis(
+                    host=os.getenv("REDIS_HOST", "localhost"),
+                    port=int(os.getenv("REDIS_PORT", 6379)),
+                    db=0,
+                    decode_responses=True,
+                    socket_connect_timeout=1.0,
+                    socket_timeout=1.0,
+                )
+                self._redis.ping()
+                logger.info("LLMService: Connected to Redis for prompt caching.")
+            except Exception as e:
+                logger.info("LLMService: Redis unavailable for prompt caching (%s).", e)
+                self._redis = None
+
     def _validate_config(self) -> None:
         """Validate LLM configuration when the service is enabled.
 
@@ -351,6 +374,18 @@ class LLMService:
         }
 
         try:
+            prompt_hash = hashlib.sha256(prompt.encode('utf-8')).hexdigest()
+            cache_key = f"llm_prompt:{self.model}:{prompt_hash}"
+            if self._redis:
+                try:
+                    # Sync cache check
+                    cached = self._redis.get(cache_key)
+                    if cached:
+                        logger.info("LLMService._call_ollama: Cache hit for prompt %s", prompt_hash)
+                        return cached
+                except Exception as e:
+                    logger.warning("LLMService._call_ollama: Redis cache get error: %s", e)
+                    
             start_time = time.time()
             sem = get_llm_semaphore()
             
@@ -425,6 +460,12 @@ class LLMService:
                         )
     
                     clean_text = self._clean_markdown(raw_text)
+                    if self._redis and clean_text:
+                        try:
+                            # Cache for 24 hours
+                            self._redis.setex(cache_key, 86400, clean_text)
+                        except Exception as e:
+                            logger.warning("LLMService._call_ollama: Redis cache set error: %s", e)
                     return clean_text
 
             # Wait for semaphore without a timeout to support long queues
