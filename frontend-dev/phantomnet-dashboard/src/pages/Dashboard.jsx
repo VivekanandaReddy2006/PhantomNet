@@ -30,11 +30,11 @@ const Dashboard = () => {
   const [sentinelLoading, setSentinelLoading] = useState(true);
   const [sentinelError, setSentinelError] = useState(null);
 
-  // Existing Stats Fetch
+  // Existing Stats Fetch + Polling
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchStats = async (isInitial = false) => {
       try {
-        setLoading(true);
+        if (isInitial) setLoading(true);
         const res = await fetch("/api/stats");
         if (!res.ok) throw new Error("Failed to fetch stats");
         const data = await res.json();
@@ -49,11 +49,14 @@ const Dashboard = () => {
       } catch (err) {
         setError(err.message);
       } finally {
-        setLoading(false);
+        if (isInitial) setLoading(false);
       }
     };
 
-    fetchStats();
+    fetchStats(true);
+    const interval = setInterval(() => fetchStats(false), 10000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Threat Metrics Live API + Auto Refresh
@@ -73,11 +76,11 @@ const Dashboard = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Sentinel Stats Fetch
+  // Sentinel Stats Fetch + Polling
   useEffect(() => {
-    const loadSentinelStats = async () => {
+    const loadSentinelStats = async (isInitial = false) => {
       try {
-        setSentinelLoading(true);
+        if (isInitial) setSentinelLoading(true);
         const data = await fetchSentinelStats();
         setSentinelStats(data);
         setSentinelError(null);
@@ -85,12 +88,12 @@ const Dashboard = () => {
         console.error("Sentinel stats fetch error:", err);
         setSentinelError(err.message);
       } finally {
-        setSentinelLoading(false);
+        if (isInitial) setSentinelLoading(false);
       }
     };
 
-    loadSentinelStats();
-    const interval = setInterval(loadSentinelStats, 60000);
+    loadSentinelStats(true);
+    const interval = setInterval(() => loadSentinelStats(false), 10000);
 
     return () => clearInterval(interval);
   }, []);

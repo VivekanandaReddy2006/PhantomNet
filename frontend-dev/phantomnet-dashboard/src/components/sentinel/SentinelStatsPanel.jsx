@@ -14,7 +14,7 @@ const SentinelStatsPanel = ({ stats, loading }) => {
 
   // 1. Safe extraction and normalization
   const total = stats?.total_playbooks || 0;
-  const approved = stats?.approved || 0;
+  const approved = (stats?.approved || 0) + (stats?.exported || 0);
   const pending = stats?.pending || 0;
   const rejected = stats?.rejected || 0;
   const approvalRate = stats?.approval_rate !== undefined ? stats.approval_rate : 0;
@@ -63,7 +63,6 @@ const SentinelStatsPanel = ({ stats, loading }) => {
 
   // 3. Severity distribution donut chart calculation
   const severityDistribution = useMemo(() => {
-    // Fallback Mock Data if empty, to ensure rich visual aesthetics
     const raw = stats?.severity_distribution || {};
     const normalized = {
       critical: raw.critical || raw.CRITICAL || 0,
@@ -75,7 +74,7 @@ const SentinelStatsPanel = ({ stats, loading }) => {
     const hasData = Object.values(normalized).some((v) => v > 0);
     const data = hasData
       ? normalized
-      : { critical: 2, high: 6, medium: 8, low: 4 }; // Sleek mock distribution fallback
+      : { critical: 0, high: 0, medium: 0, low: 0 };
 
     const sum = Object.values(data).reduce((acc, curr) => acc + curr, 0);
 
@@ -109,18 +108,7 @@ const SentinelStatsPanel = ({ stats, loading }) => {
     const trends = stats?.generation_trends || [];
     const hasData = trends.length > 0;
 
-    // Use Mock timeline if backend has no history
-    const rawData = hasData
-      ? trends
-      : [
-          { date: "Jul 24", count: 2 },
-          { date: "Jul 25", count: 4 },
-          { date: "Jul 26", count: 3 },
-          { date: "Jul 27", count: 8 },
-          { date: "Jul 28", count: 5 },
-          { date: "Jul 29", count: 12 },
-          { date: "Jul 30", count: 9 },
-        ];
+    const rawData = trends;
 
     const maxCount = Math.max(...rawData.map((d) => d.count), 4);
     const width = 500;
@@ -235,7 +223,7 @@ const SentinelStatsPanel = ({ stats, loading }) => {
           <div className="sentinel-chart-header">
             <h4 className="sentinel-chart-title">Severity Distribution</h4>
             <p className="sentinel-chart-subtitle">
-              {severityDistribution.hasData ? "LIVE PLAYBOOK METRICS" : "AESTHETIC REFERENCE PREVIEW"}
+              {severityDistribution.hasData ? "LIVE PLAYBOOK METRICS" : "NO ACTIVE PLAYBOOKS"}
             </p>
           </div>
           <div className="sentinel-chart-wrapper">
@@ -248,6 +236,17 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                 stroke="rgba(255,255,255,0.02)"
                 strokeWidth="15"
               />
+              {/* Back track / neutral ring when there is no data */}
+              {!severityDistribution.hasData && (
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="50"
+                  fill="transparent"
+                  stroke="#1e293b"
+                  strokeWidth="14"
+                />
+              )}
               {severityDistribution.segments.map((seg, i) => (
                 <circle
                   key={i}
@@ -260,8 +259,8 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                   strokeDashoffset={seg.strokeOffset}
                   transform="rotate(-90 100 100)"
                   className="donut-segment"
-                  onMouseEnter={() => setActiveSeverity(seg.name)}
-                  onMouseLeave={() => setActiveSeverity(null)}
+                  onMouseEnter={() => severityDistribution.hasData && setActiveSeverity(seg.name)}
+                  onMouseLeave={() => severityDistribution.hasData && setActiveSeverity(null)}
                   style={{
                     color: seg.color,
                     strokeWidth: activeSeverity === seg.name ? "18px" : "14px",
@@ -393,11 +392,11 @@ const SentinelStatsPanel = ({ stats, loading }) => {
           <div className="sentinel-chart-header">
             <h4 className="sentinel-chart-title">Generation Timeline</h4>
             <p className="sentinel-chart-subtitle">
-              {timelineData.hasData ? "DAILY RULE CREATIONS" : "AESTHETIC SAMPLE PATTERNS"}
+              {timelineData.hasData ? "DAILY RULE CREATIONS" : "NO HISTORY RECORDED"}
             </p>
           </div>
-          <div className="sentinel-chart-wrapper" style={{ overflow: "visible" }}>
-            <svg viewBox="0 0 500 200" className="sentinel-svg-canvas" style={{ overflow: "visible" }}>
+          <div className="sentinel-chart-wrapper" style={{ overflow: "visible", position: "relative" }}>
+            <svg viewBox="0 0 500 200" className="sentinel-svg-canvas" style={{ overflow: "visible", opacity: timelineData.hasData ? 1 : 0.15 }}>
               <defs>
                 <linearGradient id="timeline-area-grad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.25" />
@@ -496,6 +495,13 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                 );
               })}
             </svg>
+
+            {!timelineData.hasData && (
+              <div className="timeline-empty-overlay hud-font">
+                <div className="empty-title glow-text">NO_GENERATION_HISTORY</div>
+                <p className="empty-subtitle">Generate playbook response rules to view creation trends.</p>
+              </div>
+            )}
 
             {/* Custom Interactive Tooltip */}
             {hoveredTrend && (

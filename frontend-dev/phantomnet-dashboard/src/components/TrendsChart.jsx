@@ -38,6 +38,21 @@ const TrendsChart = () => {
 
     if (loading) return <div className="trends-loading">Loading Analytics...</div>;
 
+    if (data.length === 0) {
+        return (
+            <div className="trends-chart-card pro-card">
+                <div className="card-header hud-font">
+                    <h3 className="panel-title glow-text">Attack Volumes</h3>
+                    <span className="live-indicator">LIVE FEED</span>
+                </div>
+                <div className="chart-container" style={{ width: '100%', height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="hud-font text-dim" style={{ letterSpacing: '2px', fontSize: '12px', opacity: 0.7, marginBottom: '8px', color: '#64748b' }}>NO_DATA_AVAILABLE</div>
+                    <p className="hud-font text-dim" style={{ fontSize: '10px', opacity: 0.5, textAlign: 'center', maxWidth: '280px', margin: 0, lineHeight: 1.5, color: '#64748b' }}>No attack trends recorded in the database yet.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="trends-chart-card pro-card">
             <div className="card-header hud-font">
