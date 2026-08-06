@@ -946,16 +946,22 @@ const PlaybookViewer = ({
   const triggerDownload = useCallback((content, filename, mimeType = "text/plain;charset=utf-8") => {
     if (!content) return;
     const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
+
+    const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    let finalBlob = blob;
+    if (isSafari && mimeType === "application/pdf") {
+      finalBlob = new Blob([content], { type: "application/octet-stream" });
+    }
+
+    const url = URL.createObjectURL(finalBlob);
     const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    // Firefox needs a small delay before revoking the object URL,
-    // otherwise the download may be interrupted or fail silently.
-    setTimeout(() => URL.revokeObjectURL(url), 150);
+    // Use a safety delay of 250ms to prevent Firefox and Safari from cancelling the download
+    setTimeout(() => URL.revokeObjectURL(url), 250);
   }, []);
 
   const safeTitle = title.replace(/\s+/g, "_");
@@ -982,16 +988,21 @@ const PlaybookViewer = ({
           filename = match[1];
         }
       }
-      
-      const url = window.URL.createObjectURL(blob);
+      const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+      let finalBlob = blob;
+      if (isSafari && blob.type === "application/pdf") {
+        finalBlob = new Blob([blob], { type: "application/octet-stream" });
+      }
+
+      const url = window.URL.createObjectURL(finalBlob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      // delay for Firefox/others
-      setTimeout(() => window.URL.revokeObjectURL(url), 150);
+      // Use a safety delay of 250ms to prevent Firefox and Safari from cancelling the download
+      setTimeout(() => window.URL.revokeObjectURL(url), 250);
       
       if (onStatusChange) {
         onStatusChange("exported");
