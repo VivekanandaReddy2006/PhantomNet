@@ -6,7 +6,10 @@ import os
 import logging
 from typing import Dict, Any, List, Optional, Union
 
-import shap
+try:
+    import shap
+except Exception as e:
+    shap = None
 import pandas as pd
 import numpy as np
 
@@ -36,6 +39,10 @@ class ModelExplainer:
             model_components = load_model()
             if model_components and "model" in model_components:
                 self.rf_model = model_components["model"]
+
+                if not shap:
+                    logger.warning("SHAP library is not available. Explanations will not be generated.")
+                    return
 
                 try:
                     # Initialize SHAP TreeExplainer for Random Forest

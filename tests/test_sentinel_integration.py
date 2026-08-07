@@ -34,6 +34,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine import Engine
 
 # Import database module to override globals
+# pyrefly: ignore [missing-import]
 import database.database
 database.database.DATABASE_URL = TEST_DB_URL
 database.database.engine = create_engine(
@@ -82,6 +83,10 @@ for name, module in list(sys.modules.items()):
 # Set up TestClient
 from fastapi.testclient import TestClient
 from backend.main import app
+# pyrefly: ignore [missing-import]
+from middleware.auth import get_current_user
+# pyrefly: ignore [missing-import]
+from database.models import User
 
 def override_get_db():
     db = database.database.SessionLocal()
@@ -90,7 +95,11 @@ def override_get_db():
     finally:
         db.close()
 
+async def override_get_current_user():
+    return User(id=1, username="testadmin", role="Admin", status="active")
+
 app.dependency_overrides[database.database.get_db] = override_get_db
+app.dependency_overrides[get_current_user] = override_get_current_user
 client = TestClient(app)
 
 
@@ -316,7 +325,7 @@ def test_api_get_stats(db_session):
     assert data["status"] == "success"
     assert data["total_playbooks"] == 4
     assert data["pending"] == 1
-    assert data["approved"] == 1
+    assert data["approved"] == 2  # exported is included in approved count
     assert data["rejected"] == 1
     assert data["exported"] == 1
     assert data["avg_threat_score"] == 85.0

@@ -52,15 +52,19 @@
 {# ──────────────────────────────────────────────────────────────────────────
    SECTION 2 · SUMMARY
    ────────────────────────────────────────────────────────────────────────── #}
-## 📋 Executive Summary
+## 📋 Summary
 
 > **Campaign Overview:** {{ campaign_overview | default("An automated detection triggered this playbook. Review the IOC table and ATT&CK mapping below before executing containment steps.") }}
 
 **Trigger Context & Assets**
-- **Trigger Type:** `{{ trigger_type | default("threshold_breach") }}`
-- **Condition:** `{{ trigger_condition | default("N/A") }}`
-- **Time:** `{{ detection_time | default(generated_at | default("N/A")) }}`
-- **Event:** **{{ event_summary | default("N/A") }}**
+
+| Field | Value |
+|---|---|
+| **Trigger Type** | `{{ trigger_type | default("threshold_breach") }}` |
+| **Condition** | `{{ trigger_condition | default("N/A") }}` |
+| **Time** | `{{ detection_time | default(generated_at | default("N/A")) }}` |
+| **Event Summary** | **{{ event_summary | default("N/A") }}** |
+| **Time Range** | `{{ time_range | default("N/A") }}` |
 
 **Network Footprint**
 - **Source IP:** `{{ source_ip | default("N/A") }}`
@@ -77,7 +81,7 @@
 {% endif %}
 
 **Incident Priority Assessment**
-| Confidentiality | Integrity | Availability | Blast Radius |
+| Confidentiality Impact | Integrity Impact | Availability Impact | Blast Radius |
 |---|---|---|---|
 | {{ confidentiality_impact | default("High") }} | {{ integrity_impact | default("Medium") }} | {{ availability_impact | default("Medium") }} | {{ blast_radius | default("Localised to honeypot segment") }} |
 
