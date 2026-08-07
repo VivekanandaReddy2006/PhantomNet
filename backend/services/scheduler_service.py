@@ -393,11 +393,38 @@ class SchedulerService:
                     )
                 except Exception as gen_exc:
                     error_count += 1
+                    error_type = type(gen_exc).__name__
                     logger.error(
                         "[Sentinel AutoGen] FAILED to generate playbook for "
-                        "campaign %s: %s",
+                        "campaign %s (%s): %s",
                         campaign_id,
+                        error_type,
                         gen_exc,
+                    )
+
+                    # --- Graceful degradation: attempt templated fallback ---
+                    try:
+                        self._generate_fallback_playbook(
+                            db, campaign_data, campaign_id, gen_exc,
+                        )
+                        self._sentinel_processed_hashes.add(campaign_hash)
+                        new_count += 1
+                        logger.info(
+                            "[Sentinel AutoGen] FALLBACK playbook created for "
+                            "campaign %s",
+                            campaign_id,
+                        )
+                    except Exception as fb_exc:
+                        logger.error(
+                            "[Sentinel AutoGen] FALLBACK also failed for "
+                            "campaign %s: %s",
+                            campaign_id,
+                            fb_exc,
+                        )
+
+                    # --- Trigger email alert on critical failure ---
+                    self._notify_critical_failure(
+                        campaign_id, error_type, str(gen_exc),
                     )
         finally:
             db.close()
@@ -413,6 +440,117 @@ class SchedulerService:
             len(self._sentinel_processed_hashes),
         )
         logger.info("=" * 60)
+
+    # ------------------------------------------------------------------
+    # Fallback playbook generator (when full pipeline fails)
+    # ------------------------------------------------------------------
+    def _generate_fallback_playbook(
+        self,
+        db: Session,
+        campaign_data: dict,
+        campaign_id: str,
+        original_error: Exception,
+    ) -> None:
+        """Create a minimal templated playbook when the full pipeline fails.
+
+        This ensures that even under LLM or DB errors, a basic playbook
+        record is persisted for analyst review.
+        """
+        from sentinel.models import SentinelPlaybook
+
+        source_ips = campaign_data.get("source_ips", [])
+        target_ports = campaign_data.get("target_ports", [])
+        src_ip = source_ips[0] if source_ips else "unknown"
+        dst_port = target_ports[0] if target_ports else None
+
+        fallback_content = (
+            f"# Fallback Playbook — {campaign_id}\n\n"
+            f"**Generated via fallback path** due to pipeline error:\n"
+            f"`{type(original_error).__name__}: {original_error}`\n\n"
+            f"## Threat Context\n"
+            f"- **Source IPs**: {', '.join(str(ip) for ip in source_ips)}\n"
+            f"- **Target Ports**: {target_ports}\n"
+            f"- **Event Count**: {campaign_data.get('event_count', 0)}\n\n"
+            f"## Recommended Actions\n"
+            f"1. Block source IPs at the perimeter firewall.\n"
+            f"2. Review packet logs for lateral movement indicators.\n"
+            f"3. Escalate to SOC for manual threat analysis.\n"
+        )
+
+        import uuid
+        now = datetime.utcnow()
+        suffix = uuid.uuid4().hex[:6].upper()
+        playbook_id = f"PB-FB-{now.strftime('%Y%m%d')}-{suffix}"
+
+        record = SentinelPlaybook(
+            playbook_id=playbook_id,
+            src_ip=src_ip,
+            dst_port=dst_port,
+            protocol=campaign_data.get("protocols", ["TCP"])[0],
+            attack_type="FALLBACK_GENERATED",
+            threat_score=0.0,
+            severity="HIGH",
+            playbook_name=f"Fallback Playbook — {campaign_id}",
+            playbook_content=fallback_content,
+            template_name="fallback",
+            status="pending",
+            version=1,
+            is_latest=True,
+        )
+
+        db.add(record)
+        db.commit()
+        logger.info(
+            "[Sentinel AutoGen] Fallback playbook persisted: %s", playbook_id,
+        )
+
+    # ------------------------------------------------------------------
+    # Critical failure email notification
+    # ------------------------------------------------------------------
+    def _notify_critical_failure(
+        self,
+        campaign_id: str,
+        error_type: str,
+        error_message: str,
+    ) -> None:
+        """Trigger an email alert when a scheduler cycle encounters a critical error."""
+        try:
+            from sentinel.email_notifier import get_email_notifier
+
+            notifier = get_email_notifier()
+            if not notifier.enabled:
+                return
+
+            context = {
+                "playbook_name": f"SCHEDULER FAILURE — {campaign_id}",
+                "playbook_id": "N/A",
+                "severity": "CRITICAL",
+                "severity_color": "#ef4444",
+                "attack_type": f"Pipeline Error: {error_type}",
+                "technique_id": "N/A",
+                "technique_name": "N/A",
+                "threat_score": "N/A",
+                "src_ip": "scheduler",
+                "generated_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "summary": (
+                    f"The Sentinel auto-generation scheduler failed to generate "
+                    f"a playbook for campaign {campaign_id}. "
+                    f"Error: {error_type} — {error_message[:200]}"
+                ),
+                "dashboard_url": "#",
+            }
+
+            msg = notifier.compose_email(context)
+            notifier._send_smtp(msg)
+            logger.info(
+                "[Sentinel AutoGen] Critical failure email sent for campaign %s",
+                campaign_id,
+            )
+        except Exception as email_exc:
+            logger.warning(
+                "[Sentinel AutoGen] Failed to send failure notification email: %s",
+                email_exc,
+            )
 
     # ------------------------------------------------------------------
     # Introspection helpers (for API / health checks)
