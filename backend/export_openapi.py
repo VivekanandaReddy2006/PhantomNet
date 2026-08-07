@@ -11,7 +11,9 @@ try:
     from main import app
     
     # Save OpenAPI JSON to the main docs folder
-    json_path = os.path.join("..", "docs", "openapi.json")
+    base_docs_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "docs"))
+    os.makedirs(base_docs_dir, exist_ok=True)
+    json_path = os.path.join(base_docs_dir, "openapi.json")
     with open(json_path, "w") as f:
         json.dump(app.openapi(), f, indent=2)
         
@@ -39,7 +41,7 @@ try:
   </body>
 </html>"""
     
-    html_path = os.path.join("..", "docs", "api_docs.html")
+    html_path = os.path.join(base_docs_dir, "api_docs.html")
     with open(html_path, "w") as f:
         f.write(html_content)
         

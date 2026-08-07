@@ -1,34 +1,61 @@
 # Changelog
 
-## Week 2 – Dec 2025
-### Added
-- SSH Honeypot
-- HTTP Honeypot
-- Events API
-- Stats API
-- Dashboard metrics
-
-### Fixed
-- DB schema mismatches
-- API response issues
-- Dashboard fetch errors
-
-### Improved
-- Logging structure
-- Error handling
-- API consistency
-
-
-# Changelog
-
 All notable changes to the PhantomNet project are documented in this file.
 
-The format follows:
-- Feature additions
-- Enhancements
-- Fixes
-- Tests & CI
-- Documentation
+The format follows standard release logging conventions:
+- 🚀 Features
+- 🧠 Machine Learning & LLM
+- 🛡️ Security & TAXII
+- 📄 Export & Reporting
+- 🎨 Dashboard & UI
+- 🧪 Tests & Quality
+- 🔄 CI/CD & Infrastructure
+- 📚 Documentation
+
+---
+
+## [v3.0.0-rc1] - 2026-08-07
+
+### 🚀 Features
+- **Sentinel V3 Layer**: Fully automated threat response pipeline integrating honeypot event telemetry with MITRE ATT&CK mapping, Snort/Sigma detection rules, and incident response playbooks.
+- **TAXII 2.1 Server**: Built full STIX 2.1 intelligence sharing layer (`/taxii2/`) supporting Discovery, API Root, Collections, Objects, and Manifest endpoints for SIEM/MISP interoperation.
+- **PDF Export Engine**: Implemented ReportLab-based PDF export (`pdf_exporter.py`) with executive summaries, network payload tables, detection rules, and MITRE mappings.
+- **Batch Playbook Operations**: Added multi-select batch approval/rejection API (`POST /api/v1/sentinel/playbooks/batch-status`) and full revision history tracking (`version`, `parent_id`, `is_latest`, `regeneration_reason`).
+- **MITRE ATT&CK v14 Upgrade**: Updated attack technique mappings to MITRE ATT&CK v14 (`mitre_attack_v14_mappings.json`) across all 12 supported threat scenarios.
+
+### 🧠 Machine Learning & LLM
+- **Local LLM Narrative Generation**: Integrated containerized Ollama with Mistral 7B (`backend/sentinel/llm_service.py`) for automated Jinja2 playbook summaries.
+- **Resilience & Caching**: Built Redis prompt caching and background request queuing to handle concurrent generation without resource saturation.
+- **Graceful Fallback**: Implemented automatic fallback to standard templated narratives during LLM service offline states or request timeouts.
+- **Dynamic Feature Toggle**: Added `sentinel_llm_enabled` runtime configuration switch in `system_config` table and REST API.
+
+### 🛡️ Security & TAXII
+- **Authentication & BOLA Audit**: Hardened TAXII 2.1 endpoints with Basic and JWT authentication options and validated object-level authorization across playbook routes.
+- **XSS & Path Traversal Safeguards**: Sanitized playbook payload metadata prior to PDF compilation and HTML rendering.
+- **Deception Layer Pen-Test**: Verified honeypot resilience against Nmap, Nikto, and Hydra attacks (`pentest_day4_results.json`).
+
+### 📄 Export & Reporting
+- Downloadable PDF reports (`GET /api/v1/sentinel/playbooks/{id}/pdf`) with corporate branding and clean typography.
+- Standardized cross-browser Blob handling for Firefox, Safari, and Chrome.
+
+### 🎨 Dashboard & UI
+- **Sentinel Analytics Panel**: Added `SentinelStatsPanel` and `PlaybookViewer` components with real-time counters and filter controls.
+- **MITRE Visualization**: Interactive attack matrix layout showing mapped techniques, severity tiers, and confidence scores.
+- **Accessibility & Polish**: Achieved 100% Lighthouse accessibility score with ARIA labels, contrast adjustments, and zero-data state chart safety.
+
+### 🧪 Tests & Quality
+- Added unit and integration tests for TAXII endpoints (`backend/tests/test_taxii.py`, `test_taxii_client.py`).
+- Added Playwright end-to-end testing suite (`frontend-dev/tests/e2e/playbook.spec.ts`).
+- Added load and stress testing scripts for STIX feeds and LLM generation.
+
+### 🔄 CI/CD & Infrastructure
+- Updated GitHub Actions workflow (`.github/workflows/python-app.yml`) with automated TAXII, LLM mock, and PDF generation test steps.
+- Exported updated OpenAPI 3.0 schema and static HTML API reference (`docs/api_docs.html`, `docs/openapi.json`).
+
+### 📚 Documentation
+- Added Month 5 Retrospective & Release Planning (`docs/retrospective/month5_retrospective.md`).
+- Added V3.0 Release Notes (`docs/release_notes/v3.0.0-rc1.md`).
+- Added Database Migration Guide (`docs/migrations/v2_to_v3_migration_guide.md`).
 
 ---
 
