@@ -2545,6 +2545,11 @@
         "summary": "Approve Playbook",
         "description": "Approve a Sentinel playbook.\n\nUpdates **three** fields atomically:\n  - ``status`` -> ``\"approved\"``\n  - ``reviewed_by`` -> analyst username from request body\n  - ``reviewed_at`` -> current UTC timestamp\n\nArgs:\n    playbook_id: Database ID of the playbook to approve.\n    body: ReviewRequest with reviewed_by username.\n    db: Injected database session.\n\nReturns:\n    Dict with keys: status, message, playbook (full detail).\n\nRaises:\n    HTTPException 404: If playbook not found.\n    HTTPException 409: If playbook status is not pending/rejected.\n    HTTPException 500: On database commit failure.",
         "operationId": "approve_playbook_api_sentinel_playbooks__playbook_id__approve_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "playbook_id",
@@ -2603,6 +2608,11 @@
         "summary": "Reject Playbook",
         "description": "Reject a Sentinel playbook.\n\nUpdates **three** fields atomically:\n  - ``status`` -> ``\"rejected\"``\n  - ``reviewed_by`` -> analyst username from request body\n  - ``reviewed_at`` -> current UTC timestamp\n\nArgs:\n    playbook_id: Database ID of the playbook to reject.\n    body: ReviewRequest with reviewed_by username.\n    db: Injected database session.\n\nReturns:\n    Dict with keys: status, message, playbook (full detail).\n\nRaises:\n    HTTPException 404: If playbook not found.\n    HTTPException 409: If playbook status is not pending/approved.\n    HTTPException 500: On database commit failure.",
         "operationId": "reject_playbook_api_sentinel_playbooks__playbook_id__reject_patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "playbook_id",
@@ -3278,6 +3288,14 @@
         "summary": "TAXII 2.1 Server Discovery",
         "description": "Returns TAXII 2.1 server discovery document listing hosted API root URLs.",
         "operationId": "taxii_discovery_taxii2__get",
+        "security": [
+          {
+            "HTTPBasic": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "accept",
@@ -3344,6 +3362,14 @@
         "summary": "TAXII 2.1 API Root Information",
         "description": "Returns metadata and capabilities for the primary phantomnet API root.",
         "operationId": "taxii_api_root_taxii2_phantomnet__get",
+        "security": [
+          {
+            "HTTPBasic": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "accept",
@@ -3410,6 +3436,14 @@
         "summary": "TAXII 2.1 Collections List",
         "description": "Returns list of STIX collection resources available under the phantomnet API root.",
         "operationId": "list_collections_taxii2_phantomnet_collections__get",
+        "security": [
+          {
+            "HTTPBasic": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "accept",
@@ -3476,6 +3510,14 @@
         "summary": "TAXII 2.1 Collection Resource",
         "description": "Returns metadata for a specific collection identified by ID or alias.",
         "operationId": "get_collection_detail_taxii2_phantomnet_collections__collection_id___get",
+        "security": [
+          {
+            "HTTPBasic": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "collection_id",
@@ -3551,6 +3593,14 @@
         "summary": "Get TAXII Collection STIX Objects",
         "description": "Returns a STIX 2.1 bundle containing objects for the requested collection.",
         "operationId": "get_collection_objects_taxii2_phantomnet_collections__id__objects__get",
+        "security": [
+          {
+            "HTTPBasic": []
+          },
+          {
+            "HTTPBearer": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
@@ -5806,6 +5856,10 @@
       "HTTPBearer": {
         "type": "http",
         "scheme": "bearer"
+      },
+      "HTTPBasic": {
+        "type": "http",
+        "scheme": "basic"
       }
     }
   }
