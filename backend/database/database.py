@@ -93,10 +93,12 @@ engine = get_db_engine()
 # Dynamically upgrade DB schema if columns are missing
 def upgrade_db_schema(engine):
     try:
-        inspector = inspect(engine)
-        if "packet_logs" in inspector.get_table_names():
-            columns = [c["name"] for c in inspector.get_columns("packet_logs")]
-            with engine.begin() as conn:
+        with engine.connect() as conn:
+            inspector = inspect(conn)
+            tables = inspector.get_table_names()
+            
+            if "packet_logs" in tables:
+                columns = [c["name"] for c in inspector.get_columns("packet_logs")]
                 if "anomaly_score" not in columns:
                     conn.execute(text("ALTER TABLE packet_logs ADD COLUMN anomaly_score FLOAT DEFAULT 0.0"))
                 if "mail_from" not in columns:
@@ -108,19 +110,18 @@ def upgrade_db_schema(engine):
                 if "body_len" not in columns:
                     conn.execute(text("ALTER TABLE packet_logs ADD COLUMN body_len INTEGER"))
 
-        if "sentinel_playbooks" in inspector.get_table_names():
-            sp_columns = [c["name"] for c in inspector.get_columns("sentinel_playbooks")]
-            with engine.begin() as conn:
+            if "sentinel_playbooks" in tables:
+                sp_columns = [c["name"] for c in inspector.get_columns("sentinel_playbooks")]
                 if "llm_narrative" not in sp_columns:
                     conn.execute(text("ALTER TABLE sentinel_playbooks ADD COLUMN llm_narrative TEXT"))
                     logger.info("✅ Database schema migration: added llm_narrative to sentinel_playbooks")
 
-        if "system_config" in inspector.get_table_names():
-            sc_columns = [c["name"] for c in inspector.get_columns("system_config")]
-            with engine.begin() as conn:
+            if "system_config" in tables:
+                sc_columns = [c["name"] for c in inspector.get_columns("system_config")]
                 if "sentinel_llm_enabled" not in sc_columns:
                     conn.execute(text("ALTER TABLE system_config ADD COLUMN sentinel_llm_enabled BOOLEAN DEFAULT 0"))
                     logger.info("✅ Database schema migration: added sentinel_llm_enabled to system_config")
+            conn.commit()
     except Exception as e:
         logger.warning(f"Schema upgrade check failed/skipped: {e}")
 
