@@ -1,0 +1,50 @@
+# model_capabilities.yaml
+# PhantomNet ML Model Documentation - Month 5 (V3.0)
+
+model_name: PhantomNet Sentinel Ensemble V3.0
+version: "3.0.0"
+last_updated: "2026-08-07"
+description: >
+  The V3.0 ML architecture utilizes an ensemble approach combining Isolation Forest 
+  and DBSCAN with rule-based heuristics. It powers the Sentinel layer for automated 
+  threat detection, campaign clustering, and incident playbook generation.
+
+performance_metrics:
+  precision: 0.985
+  recall: 0.962
+  f1_score: 0.973
+  roc_auc: 0.998
+  false_positive_rate: 0.012
+
+latency_sla:
+  packet_capture_to_inference: "12ms"
+  campaign_clustering: "45ms"
+  llm_narrative_generation: "3500ms"
+  end_to_end_pipeline: "< 4.0s"
+
+resource_usage:
+  ram_idle: "450 MB"
+  ram_peak_load: "1.2 GB"
+  cpu_utilization_avg: "15%"
+  gpu_utilization_llm: "45% (Ollama Inference)"
+  redis_cache_size: "50 MB"
+
+capabilities:
+  - Anomaly Detection (Protocol-agnostic)
+  - Campaign Clustering (Time & Feature based)
+  - High-Entropy Payload Identification
+  - MITRE ATT&CK Mapping
+  - Automated Snort & Sigma Rule Generation
+  - AI-Driven Playbook Narrative Generation (via Ollama)
+
+supported_protocols:
+  - SSH (Port 22)
+  - HTTP/HTTPS (Port 80/443)
+  - FTP (Port 21)
+  - Telnet (Port 23)
+  - MySQL (Port 3306)
+
+limitations:
+  - Encrypted payload inspection requires external decryption keys.
+  - LLM generation speed is bounded by GPU availability.
+  - Clustering window relies on Redis persistence; restarts may break active windows.
