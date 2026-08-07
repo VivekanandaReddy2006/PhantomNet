@@ -535,3 +535,48 @@ body[data-theme="light"] .tooltip-date {
 .tooltip-val-num {
   font-weight: 800;
 }
+
+/* --- Empty / Zero-Data State Overlay --- */
+.timeline-empty-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  backdrop-filter: blur(1px);
+  border-radius: 8px;
+}
+
+body[data-theme="dark"] .timeline-empty-overlay {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+body[data-theme="light"] .timeline-empty-overlay {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.timeline-empty-overlay .empty-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #a78bfa;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+body[data-theme="light"] .timeline-empty-overlay .empty-title {
+  color: #7c3aed;
+}
+
+.timeline-empty-overlay .empty-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  max-width: 320px;
+  line-height: 1.5;
+}
+

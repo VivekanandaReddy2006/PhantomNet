@@ -306,7 +306,7 @@ def list_playbooks(
         HTTPException 500: On unexpected database errors.
     """
     try:
-        query = db.query(SentinelPlaybook)
+        query = db.query(SentinelPlaybook).filter(SentinelPlaybook.is_latest == True)
 
         if status is not None and status.strip():
             status_val = status.strip().lower()
@@ -454,17 +454,20 @@ def get_sentinel_stats(
         # pyrefly: ignore [missing-import]
         from sqlalchemy import cast, Date
 
-        total = db.query(func.count(SentinelPlaybook.id)).scalar() or 0
+        total = db.query(func.count(SentinelPlaybook.id)).filter(SentinelPlaybook.is_latest == True).scalar() or 0
 
         # Count by status
         status_counts = (
             db.query(SentinelPlaybook.status, func.count(SentinelPlaybook.id))
+            .filter(SentinelPlaybook.is_latest == True)
             .group_by(SentinelPlaybook.status)
             .all()
         )
         status_map = {status: count for status, count in status_counts}
 
-        approved_count = status_map.get("approved", 0)
+        approved_only = status_map.get("approved", 0)
+        exported_only = status_map.get("exported", 0)
+        approved_count = approved_only + exported_only
         rejected_count = status_map.get("rejected", 0)
         resolved_count = approved_count + rejected_count
         approval_rate = round((approved_count / resolved_count) * 100, 2) if resolved_count > 0 else 0.0
@@ -472,22 +475,24 @@ def get_sentinel_stats(
         # Severity distributions
         severity_counts = (
             db.query(SentinelPlaybook.severity, func.count(SentinelPlaybook.id))
+            .filter(SentinelPlaybook.is_latest == True)
             .group_by(SentinelPlaybook.severity)
             .all()
         )
         severity_map = {sev: count for sev, count in severity_counts if sev}
 
         # Average threat score
-        avg_score = db.query(func.avg(SentinelPlaybook.threat_score)).scalar()
+        avg_score = db.query(func.avg(SentinelPlaybook.threat_score)).filter(SentinelPlaybook.is_latest == True).scalar()
         avg_score = round(float(avg_score), 2) if avg_score else 0.0
 
         # Average confidence score
-        avg_confidence = db.query(func.avg(SentinelPlaybook.confidence_score)).scalar()
+        avg_confidence = db.query(func.avg(SentinelPlaybook.confidence_score)).filter(SentinelPlaybook.is_latest == True).scalar()
         avg_confidence = round(float(avg_confidence), 3) if avg_confidence else 0.0
 
         # Latest playbook timestamp
         latest = (
             db.query(SentinelPlaybook.created_at)
+            .filter(SentinelPlaybook.is_latest == True)
             .order_by(SentinelPlaybook.created_at.desc())
             .first()
         )
@@ -496,6 +501,7 @@ def get_sentinel_stats(
         # Top attack types
         top_attacks = (
             db.query(SentinelPlaybook.attack_type, func.count(SentinelPlaybook.id))
+            .filter(SentinelPlaybook.is_latest == True)
             .group_by(SentinelPlaybook.attack_type)
             .order_by(func.count(SentinelPlaybook.id).desc())
             .limit(5)
@@ -505,6 +511,7 @@ def get_sentinel_stats(
         # Daily generation counts
         daily_counts = (
             db.query(func.date(SentinelPlaybook.created_at), func.count(SentinelPlaybook.id))
+            .filter(SentinelPlaybook.is_latest == True)
             .group_by(func.date(SentinelPlaybook.created_at))
             .order_by(func.date(SentinelPlaybook.created_at).asc())
             .all()
