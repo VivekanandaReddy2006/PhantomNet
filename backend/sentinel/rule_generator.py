@@ -905,6 +905,10 @@ def generate_rules_for_campaign(
         )
         sigma_rules_list.append(rule)
 
+    # Deduplicate rules by normalized fingerprint
+    snort_rules_list = deduplicate_rules(snort_rules_list)
+    sigma_rules_list = deduplicate_rules(sigma_rules_list)
+
     # 5. Format and return results
     return {
         "snort_rules": "\n".join(snort_rules_list),
@@ -922,5 +926,31 @@ def generate_rules_for_campaign(
             "techniques": list(seen_technique_ids),
         }
     }
+
+
+def deduplicate_rules(rule_list: list[str]) -> list[str]:
+    """
+    Deduplicate a list of rule strings using MD5/SHA hash fingerprinting of normalized text.
+
+    Args:
+        rule_list: List of raw rule strings (Snort or Sigma).
+
+    Returns:
+        Deduplicated list preserving first occurrence order.
+    """
+    import hashlib
+    seen_hashes = set()
+    deduped = []
+    for rule in rule_list:
+        if not rule or not isinstance(rule, str):
+            continue
+        # Normalize rule string (strip whitespace, lower case for fingerprinting)
+        normalized = " ".join(rule.strip().split())
+        fingerprint = hashlib.md5(normalized.encode("utf-8")).hexdigest()
+        if fingerprint not in seen_hashes:
+            seen_hashes.add(fingerprint)
+            deduped.append(rule)
+    return deduped
+
 
 

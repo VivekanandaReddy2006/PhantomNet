@@ -40,7 +40,7 @@ PROJECT_ID = "PVT_kwHOCn3zZM4BKFg8"
 REPO = "sriram21-09/PhantomNet"
 
 FIELD_IDS = {
-    "Day":  "PVTSSF_lAHOCn3zZM4BKFg8zg6cR2A",
+    "Day": "PVTSSF_lAHOCn3zZM4BKFg8zhaCKvk",
     "Role": "PVTSSF_lAHOCn3zZM4BKFg8zg6cR9I",
     "Type": "PVTSSF_lAHOCn3zZM4BKFg8zg6cSJQ",
 }
@@ -77,12 +77,19 @@ ASSIGNEE_MAP = {
 }
 
 # ━━━━━━━━━━━━━━━━━━━━━ HELPERS ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def _clean_env():
+    env = dict(os.environ)
+    env.pop("GITHUB_TOKEN", None)
+    return env
+
+
 def run_gh(args):
     """Run gh CLI command, return stdout or None on failure."""
     try:
         res = subprocess.run(
             ["gh"] + args,
-            capture_output=True, text=False, check=False
+            capture_output=True, text=False, check=False,
+            env=_clean_env()
         )
         if res.returncode != 0:
             return None
@@ -96,7 +103,8 @@ def run_gh_verbose(args):
     try:
         res = subprocess.run(
             ["gh"] + args,
-            capture_output=True, text=False, check=False
+            capture_output=True, text=False, check=False,
+            env=_clean_env()
         )
         stdout = res.stdout.decode("utf-8", errors="ignore").strip() if res.stdout else ""
         stderr = res.stderr.decode("utf-8", errors="ignore").strip() if res.stderr else ""
@@ -113,8 +121,9 @@ def set_field(item_id, field_id, option_id):
         "--project-id", PROJECT_ID,
         "--field-id", field_id,
         "--single-select-option-id", option_id
-    ], capture_output=True, text=False)
+    ], capture_output=True, text=False, env=_clean_env())
     return res.returncode == 0
+
 
 
 # ━━━━━━━━━━━━━━━━ PHASE 1: VALIDATION ━━━━━━━━━━━━━━━━━━━
@@ -348,6 +357,7 @@ def phase5_create_issues(config):
         role_label = LABEL_MAP.get(task["Role"], "planning")
         cmd = [
             "issue", "create",
+            "--repo", REPO,
             "--title", title,
             "--body", body,
             "--label", role_label,
@@ -361,18 +371,19 @@ def phase5_create_issues(config):
         if milestone:
             cmd += ["--milestone", milestone]
 
-        url = run_gh(cmd)
+        url, err = run_gh_verbose(cmd)
         if url:
             print(f"  [OK] #{url.split('/')[-1]} {title[:65]}")
             created += 1
         else:
             # Retry without milestone (encoding issues)
             cmd_no_ms = [c for c in cmd if c != "--milestone" and c != milestone]
-            url = run_gh(cmd_no_ms)
+            url, err = run_gh_verbose(cmd_no_ms)
             if url:
                 print(f"  [OK] #{url.split('/')[-1]} {title[:65]} (no milestone)")
                 created += 1
             else:
+                print(f"  [FAIL] {title[:65]} -> {err}")
                 print(f"  [FAIL] {title[:65]}")
 
         time.sleep(0.5)
