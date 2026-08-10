@@ -558,10 +558,10 @@ const SentinelDashboard = () => {
         </div>
         <div className="status-item">
           <span className="status-dot-live" style={{
-            background: aiStatus === "online" ? "#10b981" : aiStatus === "checking" ? "#fb923c" : "#ef4444"
+            background: aiStatus === "online" ? "var(--color-success, #10b981)" : aiStatus === "checking" ? "var(--color-warning, #fb923c)" : "var(--color-alert, #ef4444)"
           }}></span>
           <span className="status-label">AI PIPELINE:</span>
-          <span style={{ color: aiStatus === "online" ? "#34d399" : aiStatus === "checking" ? "#fb923c" : "#f87171" }}>
+          <span style={{ color: aiStatus === "online" ? "var(--color-success, #34d399)" : aiStatus === "checking" ? "var(--color-warning, #fb923c)" : "var(--color-alert, #f87171)" }}>
             {aiStatus.toUpperCase()}
           </span>
         </div>

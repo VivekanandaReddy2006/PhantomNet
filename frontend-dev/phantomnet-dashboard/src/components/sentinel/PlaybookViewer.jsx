@@ -65,10 +65,10 @@ const TABS = [
    ═══════════════════════════════════════════════════════════════ */
 
 const SEVERITY_COLORS = {
-  critical: "#ef4444",
-  high:     "#f59e0b",
-  medium:   "#3b82f6",
-  low:      "#22c55e",
+  critical: "var(--threat-critical, #ef4444)",
+  high:     "var(--threat-high, #f59e0b)",
+  medium:   "var(--threat-medium, #3b82f6)",
+  low:      "var(--threat-low, #10b981)",
 };
 
 const SEVERITY_ICONS = {
@@ -1171,7 +1171,7 @@ const PlaybookViewer = ({
                     onClick={() => handleFormatExport("markdown")}
                     role="menuitem"
                   >
-                    <FaFileAlt className="pbv-export-item-icon" style={{ color: "#a78bfa" }} />
+                    <FaFileAlt className="pbv-export-item-icon" style={{ color: "var(--color-primary, #a78bfa)" }} />
                     <span>Markdown (.md)</span>
                   </button>
                   <button
@@ -1179,7 +1179,7 @@ const PlaybookViewer = ({
                     onClick={() => handleFormatExport("pdf")}
                     role="menuitem"
                   >
-                    <FaFilePdf className="pbv-export-item-icon" style={{ color: "#ef4444" }} />
+                    <FaFilePdf className="pbv-export-item-icon" style={{ color: "var(--color-alert, #ef4444)" }} />
                     <span>PDF (.pdf)</span>
                   </button>
                   <button
@@ -1187,7 +1187,7 @@ const PlaybookViewer = ({
                     onClick={() => handleFormatExport("json")}
                     role="menuitem"
                   >
-                    <FaFileCode className="pbv-export-item-icon" style={{ color: "#3b82f6" }} />
+                    <FaFileCode className="pbv-export-item-icon" style={{ color: "var(--color-cyan, #3b82f6)" }} />
                     <span>JSON (.json)</span>
                   </button>
                   <button
@@ -1195,7 +1195,7 @@ const PlaybookViewer = ({
                     onClick={() => handleFormatExport("stix")}
                     role="menuitem"
                   >
-                    <FaCubes className="pbv-export-item-icon" style={{ color: "#22c55e" }} />
+                    <FaCubes className="pbv-export-item-icon" style={{ color: "var(--color-success, #22c55e)" }} />
                     <span>STIX 2.1 (.stix.json)</span>
                   </button>
                 </div>
