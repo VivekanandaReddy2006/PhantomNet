@@ -217,6 +217,13 @@ class SentinelPlaybook(Base):
         ),
     )
 
+    quality_score = Column(
+        Float,
+        nullable=True,
+        default=None,
+        comment="Dynamic quality score (0-100) based on IOC count, cluster volume, model confidence, and multi-source verification.",
+    )
+
     severity = Column(
         String(16),
         nullable=True,
@@ -374,6 +381,7 @@ class SentinelPlaybook(Base):
             "attack_type":      self.attack_type,
             "threat_score":     self.threat_score,
             "confidence_score": self.confidence_score,
+            "quality_score":    self.quality_score,
             "severity":         self.severity,
             # MITRE ATT&CK
             "technique_id":     self.technique_id,

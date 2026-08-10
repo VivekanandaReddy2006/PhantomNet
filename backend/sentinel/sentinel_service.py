@@ -55,6 +55,7 @@ from sentinel.rule_generator import generate_rules_for_campaign
 from sentinel.stix_enhanced import build_stix_bundle, bundle_to_json
 from sentinel.models import SentinelPlaybook
 from sentinel.confidence_scoring import calculate_confidence, ConfidenceResult
+from sentinel.quality_scorer import calculate_quality_score
 
 # Database models and session
 from database.models import PacketLog, Event, IOC
@@ -682,6 +683,16 @@ class SentinelService:
             confidence_result.multi_proto_bonus,
         )
 
+        # ── Step 2d: Calculate quality score ──────────────────────────────
+        multi_source = bool(len(ioc_rows) > 0 and len(matched_logs) > 0)
+        quality_score = calculate_quality_score(
+            ioc_count=len(ioc_rows),
+            event_count=event_count,
+            model_confidence=confidence_score,
+            multi_source_verified=multi_source
+        )
+        logger.info("Step 2d - Quality score: %.2f", quality_score)
+
         # ── Step 3: Run SignatureEngine on events ─────────────────────────
         signature_names = self._run_signature_analysis(source_ips, service_type)
         logger.info("Step 3 - Detected signatures: %s", signature_names)
@@ -828,6 +839,7 @@ class SentinelService:
             attack_type=attack_type,
             threat_score=threat_score,
             confidence_score=confidence_score,
+            quality_score=quality_score,
             severity=confidence_severity,
             technique_id=primary_technique.get("technique_id"),
             technique_name=primary_technique.get("technique_name"),
@@ -913,6 +925,7 @@ class SentinelService:
             "template_name": template_name,
             "threat_score": threat_score,
             "confidence_score": confidence_score,
+            "quality_score": quality_score,
             "severity": confidence_severity,
             "confidence_breakdown": confidence_result.breakdown,
             "ioc_threat_level": ioc_threat_level,

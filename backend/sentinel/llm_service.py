@@ -392,6 +392,7 @@ class LLMService:
             # Use asyncio.timeout (or wait_for if on older python, but 3.11+ supports timeout)
             # Actually, using wait_for is safer across python versions if timeout doesn't exist
             async def _do_request():
+                global last_generation_time_ms
                 async with httpx.AsyncClient(timeout=_OLLAMA_TIMEOUT) as client:
                     if stream:
                         # ---- Streaming path: aggregate NDJSON chunks ----
@@ -424,7 +425,6 @@ class LLMService:
     
                         raw_text = "".join(collected_tokens)
                         latency_ms = (time.time() - start_time) * 1000
-                        global last_generation_time_ms
                         last_generation_time_ms = latency_ms
     
                         if latency_ms > 25000:
@@ -449,7 +449,6 @@ class LLMService:
                         result = response.json()
                         raw_text = result.get("response", "")
                         latency_ms = (time.time() - start_time) * 1000
-                        global last_generation_time_ms
                         last_generation_time_ms = latency_ms
     
                         if latency_ms > 25000:
