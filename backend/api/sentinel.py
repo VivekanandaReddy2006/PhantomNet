@@ -83,6 +83,8 @@ class PlaybookSummary(BaseModel):
     protocol: Optional[str] = None
     attack_type: Optional[str] = None
     threat_score: Optional[float] = None
+    quality_score: Optional[float] = None
+    quality_badge: Optional[str] = None
     technique_id: Optional[str] = None
     technique_name: Optional[str] = None
     tactic: Optional[str] = None
@@ -216,8 +218,17 @@ def _serialize_playbook_summary(row: SentinelPlaybook) -> Dict[str, Any]:
         row: SentinelPlaybook ORM instance.
 
     Returns:
-        Dictionary with 17 summary fields.
+        Dictionary with summary fields.
     """
+    quality_badge = None
+    if row.quality_score is not None:
+        if row.quality_score >= 80:
+            quality_badge = "High Quality"
+        elif row.quality_score >= 50:
+            quality_badge = "Standard Quality"
+        else:
+            quality_badge = "Low Quality"
+
     return {
         "id": row.id,
         "playbook_id": row.playbook_id,
@@ -226,6 +237,8 @@ def _serialize_playbook_summary(row: SentinelPlaybook) -> Dict[str, Any]:
         "protocol": row.protocol,
         "attack_type": row.attack_type,
         "threat_score": row.threat_score,
+        "quality_score": getattr(row, "quality_score", None),
+        "quality_badge": quality_badge,
         "technique_id": row.technique_id,
         "technique_name": row.technique_name,
         "tactic": row.tactic,

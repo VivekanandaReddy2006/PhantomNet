@@ -1,68 +1,50 @@
 """
 backend/sentinel/quality_scorer.py
 -----------------------------------
-Calculates dynamic quality scores (0-100) for Sentinel incident playbooks based on
-threat confidence, IOC density, rule completeness, and multi-source verification.
+PhantomNet Sentinel Layer — Playbook Quality Scoring Engine
+
+Calculates a dynamic quality score (0-100) based on:
+1. IOC count: Number of unique Indicators of Compromise
+2. Cluster volume: Number of events in the campaign
+3. Model confidence: ML threat score or confidence score
+4. Multi-source verification: Whether the threat was verified by multiple sources (e.g., ML detection + Threat Intel IOCs)
 """
 
-from typing import Any, Dict, Optional
-
-
-def calculate_playbook_quality_score(playbook_data: Dict[str, Any]) -> int:
+def calculate_quality_score(
+    ioc_count: int,
+    event_count: int,
+    model_confidence: float,
+    multi_source_verified: bool
+) -> float:
     """
-    Compute a deterministic quality score from 0 to 100 for a playbook.
-
-    Scoring factors:
-    - Base confidence score (up to 40 pts)
-    - Threat score (up to 20 pts)
-    - Presence of Snort & Sigma rules (15 pts)
-    - Presence of MITRE technique mapping (10 pts)
-    - Presence of AI narrative (10 pts)
-    - Multi-source / multi-protocol indicators (5 pts)
+    Calculate a 0-100 quality score for a playbook.
 
     Args:
-        playbook_data: Dict representation of a SentinelPlaybook model or generation payload.
+        ioc_count: Number of unique IOCs involved.
+        event_count: Total volume of events in the cluster.
+        model_confidence: The confidence score from the model (assumed 0.0 - 1.0, or 0-100).
+        multi_source_verified: True if verified across multiple sources (e.g. ML + Intel).
 
     Returns:
-        int: Quality score bounded between 0 and 100.
+        Float quality score from 0.0 to 100.0.
     """
-    score = 0.0
-
-    # 1. Confidence score (0.0 to 1.0 -> max 40 pts)
-    conf = playbook_data.get("confidence_score")
-    if conf is not None:
-        score += float(conf) * 40.0
+    # Normalize model confidence to 0-100 if it is 0-1.0
+    if model_confidence <= 1.0 and model_confidence > 0.0:
+        conf_score = model_confidence * 100.0
     else:
-        score += 20.0  # Default midpoint if missing
+        conf_score = max(0.0, min(100.0, model_confidence))
 
-    # 2. Threat score (0.0 to 100.0 -> max 20 pts)
-    threat = playbook_data.get("threat_score")
-    if threat is not None:
-        score += (min(float(threat), 100.0) / 100.0) * 20.0
+    # Base score derived heavily from model confidence (up to 40 points)
+    score = conf_score * 0.40
 
-    # 3. Detection rules completeness (15 pts total)
-    snort = playbook_data.get("snort_rule")
-    sigma = playbook_data.get("sigma_rule")
-    if snort and len(snort.strip()) > 10:
-        score += 10.0
-    if sigma and len(sigma.strip()) > 10:
-        score += 5.0
+    # IOC count (up to 20 points, 5 points per IOC)
+    score += min(20.0, ioc_count * 5.0)
 
-    # 4. MITRE mapping (10 pts)
-    tech_id = playbook_data.get("technique_id")
-    if tech_id and tech_id != "T0000":
-        score += 10.0
+    # Cluster volume (up to 20 points, cap at 100 events)
+    score += min(20.0, (event_count / 100.0) * 20.0)
 
-    # 5. AI narrative (10 pts)
-    llm_narrative = playbook_data.get("llm_narrative")
-    if llm_narrative and len(llm_narrative.strip()) > 20:
-        score += 10.0
+    # Multi-source verification (20 points)
+    if multi_source_verified:
+        score += 20.0
 
-    # 6. Additional indicators / Source IP / Severity (5 pts)
-    if playbook_data.get("src_ip"):
-        score += 3.0
-    if playbook_data.get("severity") in ("CRITICAL", "HIGH"):
-        score += 2.0
-
-    final_score = int(round(score))
-    return max(0, min(100, final_score))
+    return round(max(0.0, min(100.0, score)), 2)
