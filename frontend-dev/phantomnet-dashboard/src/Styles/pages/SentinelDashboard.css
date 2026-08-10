@@ -4,9 +4,9 @@
 
 .sentinel-wrapper {
     padding: 2rem;
-    background: #0b0f19;
+    background: var(--bg-primary, #0b0f19);
     min-height: calc(100vh - 80px);
-    color: #e2e8f0;
+    color: var(--text-primary, #e2e8f0);
     position: relative;
     overflow: hidden;
 }
@@ -111,8 +111,8 @@
     flex-wrap: wrap;
     margin-bottom: 2.5rem;
     padding: 1rem 1.5rem;
-    background: rgba(30, 41, 59, 0.4);
-    border: 1px solid rgba(139, 92, 246, 0.1);
+    background: var(--bg-hud, rgba(30, 41, 59, 0.4));
+    border: 1px solid var(--border-hud, rgba(139, 92, 246, 0.1));
     border-radius: 0.75rem;
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
@@ -126,20 +126,20 @@
     gap: 0.5rem;
     font-size: 0.8rem;
     font-family: 'JetBrains Mono', monospace;
-    color: #94a3b8;
+    color: var(--text-dim, #94a3b8);
 }
 
 .status-item .status-dot-live {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 10px #10b981;
+    background: var(--color-success, #10b981);
+    box-shadow: 0 0 10px var(--color-success, #10b981);
     animation: sentinel-pulse 2s infinite;
 }
 
 .status-item .status-label {
-    color: #cbd5e1;
+    color: var(--text-hud, #cbd5e1);
     font-weight: 600;
 }
 
@@ -388,6 +388,20 @@ body[data-theme="light"] .sentinel-empty-hint {
     background: rgba(241, 245, 249, 0.8);
     border-color: rgba(0, 0, 0, 0.06);
     color: #64748b;
+}
+
+body[data-theme="light"] .technique-filter-banner {
+    background: var(--bg-hud, rgba(255, 255, 255, 0.92));
+    border-color: var(--border-bright, rgba(56, 189, 248, 0.3));
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08);
+}
+
+body[data-theme="light"] .technique-filter-title {
+    color: var(--text-primary, #0f172a);
+}
+
+body[data-theme="light"] .technique-filter-tactic {
+    color: var(--text-muted, #64748b);
 }
 
 /* ─── Filter Tabs ─── */

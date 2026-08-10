@@ -367,19 +367,19 @@ const SentinelStatsPanel = ({ stats, loading }) => {
           </div>
           <div className="gauge-stats-row">
             <div className="gauge-substat">
-              <span className="gauge-substat-val" style={{ color: "#34d399" }}>
+              <span className="gauge-substat-val" style={{ color: "var(--color-success, #34d399)" }}>
                 {approved}
               </span>
               <span className="gauge-substat-label">APPROVED</span>
             </div>
             <div className="gauge-substat">
-              <span className="gauge-substat-val" style={{ color: "#fb7185" }}>
+              <span className="gauge-substat-val" style={{ color: "var(--color-alert, #fb7185)" }}>
                 {rejected}
               </span>
               <span className="gauge-substat-label">REJECTED</span>
             </div>
             <div className="gauge-substat">
-              <span className="gauge-substat-val" style={{ color: "#a78bfa" }}>
+              <span className="gauge-substat-val" style={{ color: "var(--color-primary, #a78bfa)" }}>
                 {pending}
               </span>
               <span className="gauge-substat-label">PENDING</span>
@@ -515,7 +515,7 @@ const SentinelStatsPanel = ({ stats, loading }) => {
                 <div className="tooltip-date">{hoveredTrend.date || "Date Unknown"}</div>
                 <div className="tooltip-val">
                   <span>Playbooks:</span>
-                  <span className="tooltip-val-num" style={{ color: "#a78bfa" }}>
+                  <span className="tooltip-val-num" style={{ color: "var(--color-primary, #a78bfa)" }}>
                     {hoveredTrend.count}
                   </span>
                 </div>
