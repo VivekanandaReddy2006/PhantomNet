@@ -413,6 +413,10 @@ def compare_playbooks(
         raise HTTPException(status_code=404, detail="One or both playbooks not found")
 
     from sentinel.cve_mapper import get_cve_mappings
+    from database.models import IOC
+
+    ioc_count_1 = db.query(IOC).filter(IOC.value == pb1.src_ip).count() + (1 if pb1.src_ip else 0)
+    ioc_count_2 = db.query(IOC).filter(IOC.value == pb2.src_ip).count() + (1 if pb2.src_ip else 0)
 
     diff = {
         "playbook_1": pb1.to_dict(),
@@ -425,6 +429,10 @@ def compare_playbooks(
             "severity_match": pb1.severity == pb2.severity,
             "confidence_diff": round(abs((pb1.confidence_score or 0) - (pb2.confidence_score or 0)), 3),
             "snort_rules_identical": pb1.snort_rule == pb2.snort_rule,
+            "sigma_rules_identical": pb1.sigma_rule == pb2.sigma_rule,
+            "ioc_count_1": ioc_count_1,
+            "ioc_count_2": ioc_count_2,
+            "ioc_count_diff": abs(ioc_count_1 - ioc_count_2),
         }
     }
     return {"status": "success", "comparison": diff}
