@@ -1,0 +1,405 @@
+{
+  "_metadata": {
+    "title": "PhantomNet Sentinel \u2014 MITRE ATT&CK v14 Technique Mappings",
+    "description": "Verified ATT&CK v14 (Enterprise) technique mappings for all 12 PhantomNet honeypot attack scenarios.",
+    "attack_version": "14.1",
+    "attack_spec_version": "2.1.0",
+    "stix_spec_version": "2.1",
+    "created": "2026-08-06T00:00:00Z",
+    "last_verified": "2026-08-06T00:00:00Z",
+    "reference": "https://attack.mitre.org/resources/updates/updates-october-2023/",
+    "scenario_count": 12,
+    "author": "PhantomNet Security Developer \u2014 Week 20 Day 3"
+  },
+  "tactics": {
+    "TA0001": {
+      "name": "Initial Access",
+      "url": "https://attack.mitre.org/tactics/TA0001/"
+    },
+    "TA0002": {
+      "name": "Execution",
+      "url": "https://attack.mitre.org/tactics/TA0002/"
+    },
+    "TA0006": {
+      "name": "Credential Access",
+      "url": "https://attack.mitre.org/tactics/TA0006/"
+    },
+    "TA0007": {
+      "name": "Discovery",
+      "url": "https://attack.mitre.org/tactics/TA0007/"
+    },
+    "TA0008": {
+      "name": "Lateral Movement",
+      "url": "https://attack.mitre.org/tactics/TA0008/"
+    },
+    "TA0010": {
+      "name": "Exfiltration",
+      "url": "https://attack.mitre.org/tactics/TA0010/"
+    },
+    "TA0011": {
+      "name": "Command and Control",
+      "url": "https://attack.mitre.org/tactics/TA0011/"
+    },
+    "TA0040": {
+      "name": "Impact",
+      "url": "https://attack.mitre.org/tactics/TA0040/"
+    },
+    "TA0043": {
+      "name": "Reconnaissance",
+      "url": "https://attack.mitre.org/tactics/TA0043/"
+    }
+  },
+  "mappings": [
+    {
+      "scenario_id": 1,
+      "signature": "SSH_AUTH_FAILURE",
+      "technique_id": "T1110.001",
+      "technique_name": "Brute Force: Password Guessing",
+      "parent_technique_id": "T1110",
+      "tactic": "Credential Access",
+      "tactic_id": "TA0006",
+      "severity": "HIGH",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows",
+        "Network",
+        "IaaS",
+        "Containers"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1110/001/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1110.001",
+        "url": "https://attack.mitre.org/techniques/T1110/001/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "credential-access"
+      },
+      "v14_verified": true,
+      "notes": "T1110.001 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 2,
+      "signature": "SSH_HIGH_ACTIVITY",
+      "technique_id": "T1021.004",
+      "technique_name": "Remote Services: SSH",
+      "parent_technique_id": "T1021",
+      "tactic": "Lateral Movement",
+      "tactic_id": "TA0008",
+      "severity": "MEDIUM",
+      "platforms": [
+        "Linux",
+        "macOS"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1021/004/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1021.004",
+        "url": "https://attack.mitre.org/techniques/T1021/004/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "lateral-movement"
+      },
+      "v14_verified": true,
+      "notes": "T1021.004 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 3,
+      "signature": "HTTP_SQL_INJECTION",
+      "technique_id": "T1190",
+      "technique_name": "Exploit Public-Facing Application",
+      "parent_technique_id": null,
+      "tactic": "Initial Access",
+      "tactic_id": "TA0001",
+      "severity": "CRITICAL",
+      "platforms": [
+        "Network",
+        "Windows",
+        "Linux",
+        "macOS",
+        "Containers",
+        "IaaS"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1190/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1190",
+        "url": "https://attack.mitre.org/techniques/T1190/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "initial-access"
+      },
+      "v14_verified": true,
+      "notes": "T1190 base technique, no sub-techniques. Unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 4,
+      "signature": "HTTP_XSS_ATTEMPT",
+      "technique_id": "T1059.007",
+      "technique_name": "Command and Scripting Interpreter: JavaScript",
+      "parent_technique_id": "T1059",
+      "tactic": "Execution",
+      "tactic_id": "TA0002",
+      "severity": "HIGH",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1059/007/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1059.007",
+        "url": "https://attack.mitre.org/techniques/T1059/007/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "execution"
+      },
+      "v14_verified": true,
+      "notes": "T1059.007 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 5,
+      "signature": "HTTP_PATH_TRAVERSAL",
+      "technique_id": "T1083",
+      "technique_name": "File and Directory Discovery",
+      "parent_technique_id": null,
+      "tactic": "Discovery",
+      "tactic_id": "TA0007",
+      "severity": "HIGH",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1083/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1083",
+        "url": "https://attack.mitre.org/techniques/T1083/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "discovery"
+      },
+      "v14_verified": true,
+      "notes": "T1083 base technique. Unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 6,
+      "signature": "HTTP_SCANNER_BEHAVIOR",
+      "technique_id": "T1046",
+      "technique_name": "Network Service Discovery",
+      "parent_technique_id": null,
+      "tactic": "Discovery",
+      "tactic_id": "TA0007",
+      "severity": "MEDIUM",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1046",
+        "url": "https://attack.mitre.org/techniques/T1046/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "discovery"
+      },
+      "v14_related_techniques": [
+        "T1595.002"
+      ],
+      "v14_verified": true,
+      "notes": "T1046 active and unchanged in ATT&CK v14. Related: T1595.002 (Active Scanning: Vulnerability Scanning) for external pre-attack scanning phase."
+    },
+    {
+      "scenario_id": 7,
+      "signature": "FTP_DATA_EXFILTRATION",
+      "technique_id": "T1048.003",
+      "technique_name": "Exfiltration Over Unencrypted Non-C2 Protocol",
+      "parent_technique_id": "T1048",
+      "tactic": "Exfiltration",
+      "tactic_id": "TA0010",
+      "severity": "CRITICAL",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1048/003/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1048.003",
+        "url": "https://attack.mitre.org/techniques/T1048/003/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "exfiltration"
+      },
+      "v14_verified": true,
+      "notes": "T1048.003 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 8,
+      "signature": "SMTP_LARGE_PAYLOAD",
+      "technique_id": "T1071.003",
+      "technique_name": "Application Layer Protocol: Mail Protocols",
+      "parent_technique_id": "T1071",
+      "tactic": "Command and Control",
+      "tactic_id": "TA0011",
+      "severity": "HIGH",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1071/003/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1071.003",
+        "url": "https://attack.mitre.org/techniques/T1071/003/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "command-and-control"
+      },
+      "v14_verified": true,
+      "notes": "T1071.003 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 9,
+      "signature": "DISTRIBUTED_BRUTE_FORCE",
+      "technique_id": "T1110.004",
+      "technique_name": "Brute Force: Credential Stuffing",
+      "parent_technique_id": "T1110",
+      "tactic": "Credential Access",
+      "tactic_id": "TA0006",
+      "severity": "CRITICAL",
+      "platforms": [
+        "Windows",
+        "Linux",
+        "macOS",
+        "IaaS",
+        "SaaS",
+        "Azure AD",
+        "Office 365",
+        "Google Workspace",
+        "Containers"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1110/004/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1110.004",
+        "url": "https://attack.mitre.org/techniques/T1110/004/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "credential-access"
+      },
+      "v14_verified": true,
+      "notes": "T1110.004 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 10,
+      "signature": "LOW_AND_SLOW_SCAN",
+      "technique_id": "T1595.001",
+      "technique_name": "Active Scanning: Scanning IP Blocks",
+      "parent_technique_id": "T1595",
+      "tactic": "Reconnaissance",
+      "tactic_id": "TA0043",
+      "severity": "MEDIUM",
+      "platforms": [
+        "PRE"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1595/001/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1595.001",
+        "url": "https://attack.mitre.org/techniques/T1595/001/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "reconnaissance"
+      },
+      "v14_verified": true,
+      "notes": "T1595.001 unchanged in ATT&CK v14."
+    },
+    {
+      "scenario_id": 11,
+      "signature": "MULTI_PROTOCOL_ATTACK",
+      "technique_id": "T1046",
+      "technique_name": "Network Service Discovery",
+      "parent_technique_id": null,
+      "tactic": "Discovery",
+      "tactic_id": "TA0007",
+      "severity": "HIGH",
+      "platforms": [
+        "Linux",
+        "macOS",
+        "Windows"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1046/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1046",
+        "url": "https://attack.mitre.org/techniques/T1046/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "discovery"
+      },
+      "v14_verified": true,
+      "notes": "T1046 active in ATT&CK v14. Multi-protocol probing is a discovery pattern."
+    },
+    {
+      "scenario_id": 12,
+      "signature": "HIGH_FREQUENCY_ATTACK",
+      "technique_id": "T1498",
+      "technique_name": "Network Denial of Service",
+      "parent_technique_id": null,
+      "tactic": "Impact",
+      "tactic_id": "TA0040",
+      "severity": "CRITICAL",
+      "platforms": [
+        "Windows",
+        "Linux",
+        "macOS",
+        "Network",
+        "Containers",
+        "IaaS"
+      ],
+      "url": "https://attack.mitre.org/techniques/T1498/",
+      "stix_external_reference": {
+        "source_name": "mitre-attack",
+        "external_id": "T1498",
+        "url": "https://attack.mitre.org/techniques/T1498/"
+      },
+      "kill_chain_phase": {
+        "kill_chain_name": "mitre-attack",
+        "phase_name": "impact"
+      },
+      "v14_sub_techniques": [
+        {
+          "id": "T1498.001",
+          "name": "Direct Network Flood",
+          "url": "https://attack.mitre.org/techniques/T1498/001/"
+        },
+        {
+          "id": "T1498.002",
+          "name": "Reflection Amplification",
+          "url": "https://attack.mitre.org/techniques/T1498/002/"
+        }
+      ],
+      "v14_verified": true,
+      "notes": "T1498 and sub-techniques active in ATT&CK v14. High-frequency volumetric attacks typically align with T1498.001 (Direct Network Flood)."
+    }
+  ]
+}

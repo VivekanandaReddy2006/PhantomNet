@@ -56,7 +56,10 @@ const SentinelStatsWidget = ({ stats, loading, error }) => {
       <div className="sentinel-stats-grid">
         {sentinelCards.map((card) => {
           const Icon = card.icon;
-          const value = loading ? "—" : (stats?.[card.key] ?? "N/A");
+          const cardValue = card.key === "approved"
+            ? ((stats?.approved || 0) + (stats?.exported || 0))
+            : (stats?.[card.key] ?? 0);
+          const value = loading ? "—" : (stats?.[card.key] !== undefined ? cardValue : "N/A");
 
           return (
             <div
@@ -86,7 +89,7 @@ const SentinelStatsWidget = ({ stats, loading, error }) => {
                       width: loading
                         ? "0%"
                         : stats?.total_playbooks > 0
-                        ? `${Math.min(((stats?.[card.key] ?? 0) / stats.total_playbooks) * 100, 100)}%`
+                        ? `${Math.min((cardValue / stats.total_playbooks) * 100, 100)}%`
                         : card.key === "total_playbooks"
                         ? "100%"
                         : "0%",

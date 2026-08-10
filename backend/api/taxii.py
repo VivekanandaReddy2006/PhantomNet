@@ -30,21 +30,31 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 
+# pyrefly: ignore [missing-import]
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query, Response
+# pyrefly: ignore [missing-import]
 from fastapi.responses import JSONResponse
+# pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from database.database import get_db
+from database.models import User
+from fastapi.security import HTTPBasic, HTTPBasicCredentials, HTTPBearer, HTTPAuthorizationCredentials
+from middleware.auth import decode_token, verify_password
+# pyrefly: ignore [missing-import]
 from sentinel.models import SentinelPlaybook
 from schemas.taxii import (
     TaxiiApiRootResponse,
     TaxiiCollectionResource,
     TaxiiCollectionsResponse,
     TaxiiDiscoveryResponse,
+    TaxiiEnvelopeResponse,
     TaxiiErrorResponse,
 )
 
+# pyrefly: ignore [missing-import]
 from starlette.middleware.base import BaseHTTPMiddleware
+# pyrefly: ignore [missing-import]
 from starlette.requests import Request
 
 logger = logging.getLogger("api.taxii")
@@ -53,6 +63,32 @@ TAXII_MEDIA_TYPE = "application/taxii+json;version=2.1"
 STIX_MEDIA_TYPE = "application/stix+json;version=2.1"
 
 router = APIRouter(prefix="/taxii2", tags=["TAXII 2.1 Feed"])
+
+basic_auth = HTTPBasic(auto_error=False)
+bearer_auth = HTTPBearer(auto_error=False)
+
+def get_taxii_user(
+    basic: Optional[HTTPBasicCredentials] = Depends(basic_auth),
+    bearer: Optional[HTTPAuthorizationCredentials] = Depends(bearer_auth),
+    db: Session = Depends(get_db)
+) -> User:
+    if bearer:
+        token_data = decode_token(bearer.credentials)
+        if token_data:
+            user = db.query(User).filter(User.username == token_data.get("sub")).first()
+            if user and user.status == "active":
+                return user
+    if basic:
+        user = db.query(User).filter(User.username == basic.username).first()
+        if user and user.status == "active" and verify_password(basic.password, user.hashed_password):
+            return user
+            
+    err = TaxiiErrorResponse(
+        title="Unauthorized",
+        description="Invalid or missing authentication credentials.",
+        http_status="401",
+    )
+    raise HTTPException(status_code=401, detail=err.model_dump())
 
 
 def check_taxii_headers(
@@ -316,6 +352,7 @@ def get_taxii_collections(db: Session) -> List[TaxiiCollectionResource]:
 def taxii_discovery(
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -346,6 +383,7 @@ def taxii_discovery(
 def taxii_api_root(
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -377,6 +415,7 @@ def list_collections(
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -410,6 +449,7 @@ def get_collection_detail(
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=False)
     if err_resp:
@@ -514,11 +554,13 @@ def parse_added_after(
 
 @router.get(
     "/phantomnet/collections/{id}/objects/",
+    response_model=TaxiiEnvelopeResponse,
     summary="Get TAXII Collection STIX Objects",
     description="Returns a STIX 2.1 bundle containing objects for the requested collection.",
 )
 @router.get(
     "/phantomnet/collections/{id}/objects",
+    response_model=TaxiiEnvelopeResponse,
     include_in_schema=False,
 )
 def get_collection_objects(
@@ -537,10 +579,24 @@ def get_collection_objects(
         le=1000,
         description="Maximum number of STIX objects to return. Max is 1000.",
     ),
+    next_token: Optional[int] = Query(
+        None,
+        alias="next",
+        description="Pagination offset index to fetch the next page of results.",
+    ),
     db: Session = Depends(get_db),
     accept: Optional[str] = Header(None),
     content_type: Optional[str] = Header(None),
+    current_user: User = Depends(get_taxii_user),
 ) -> JSONResponse:
+    """
+    Retrieve STIX 2.1 objects from a specific TAXII collection.
+    
+    Supports pagination via `limit` and `next` tokens, and time-based filtering 
+    using the `added_after` query parameter.
+    
+    Returns a TAXII envelope containing the STIX objects.
+    """
     err_resp = validate_taxii_headers(accept, content_type, is_objects_endpoint=True)
     if err_resp:
         return err_resp
@@ -579,9 +635,13 @@ def get_collection_objects(
             query = query.filter(SentinelPlaybook.created_at > filter_dt)
 
         if matched_col and matched_col.id.startswith("tactic-"):
+            # pyrefly: ignore [missing-import]
+            from sqlalchemy import func
             tactic_slug = matched_col.id.replace("tactic-", "")
             query = query.filter(SentinelPlaybook.tactic.isnot(None))
-            # We fetch first, then filter below since tactic might need slugification
+            query = query.filter(
+                func.lower(func.replace(func.replace(SentinelPlaybook.tactic, ' ', '-'), '/', '-')) == tactic_slug
+            )
         elif matched_col and matched_col.id.startswith("honeypot-"):
             port_map = {"cowrie-ssh": 22, "web-http": 80, "web-https": 443, "dionaea-mysql": 3306, "dionaea-ftp": 21}
             port = port_map.get(matched_col.alias)
@@ -591,20 +651,13 @@ def get_collection_objects(
         # Order by created_at to ensure consistent pagination
         query = query.order_by(SentinelPlaybook.created_at.asc())
 
+        if next_token is not None:
+            query = query.offset(next_token)
+
         # If a limit is provided, we limit the query. If not, use a default safe limit
         safe_limit = limit if limit is not None else 100
         
-        # We need to filter tactic dynamically due to slug matching logic
-        # For memory efficiency, we shouldn't fetch all. 
-        # But for now, we apply limit to the DB query to avoid huge memory footprint.
         playbooks = query.limit(safe_limit).all()
-
-        if matched_col and matched_col.id.startswith("tactic-"):
-            tactic_slug = matched_col.id.replace("tactic-", "")
-            playbooks = [
-                pb for pb in playbooks
-                if pb.tactic and pb.tactic.strip().lower().replace(" ", "-").replace("/", "-") == tactic_slug
-            ]
 
     except Exception as e:
         logger.error("Failed to query playbooks for collection objects: %s", e)

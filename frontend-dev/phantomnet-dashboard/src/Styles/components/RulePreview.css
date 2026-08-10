@@ -264,3 +264,48 @@ body[data-theme="light"] .rule-preview-footer {
 .rule-line-count {
     opacity: 0.7;
 }
+
+/* Focus Ring Outline for RulePreview controls */
+.rule-tab:focus-visible,
+.rule-copy-btn:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+}
+
+body[data-theme="light"] .rule-tab:focus-visible,
+body[data-theme="light"] .rule-copy-btn:focus-visible {
+    outline-color: #6d28d9;
+}
+
+/* Light Theme High Contrast for RulePreview */
+body[data-theme="light"] .rule-tab {
+    color: #475569;
+}
+
+body[data-theme="light"] .rule-tab:hover {
+    color: #1e293b;
+}
+
+body[data-theme="light"] .rule-preview-footer {
+    color: #475569;
+}
+
+body[data-theme="light"] .rule-copy-btn {
+    border-color: rgba(0, 0, 0, 0.08);
+    background: #f8fafc;
+    color: #475569;
+}
+
+body[data-theme="light"] .rule-copy-btn:hover {
+    border-color: #8b5cf6;
+    background: #ffffff;
+    color: #6d28d9;
+}
+
+body[data-theme="light"] .rule-copy-btn.copied {
+    background: rgba(5, 150, 105, 0.08) !important;
+    border-color: #059669 !important;
+    color: #047857 !important;
+}
+

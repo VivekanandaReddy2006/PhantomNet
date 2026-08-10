@@ -313,6 +313,14 @@ class SentinelPlaybook(Base):
         comment="AI-generated playbook narrative summary (Markdown format)",
     )
 
+    quality_score = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        index=True,
+        comment="Dynamic playbook quality score in range 0-100",
+    )
+
     # ΓöÇΓöÇ 6. Lifecycle / Workflow ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
     #   status      : Approval workflow state.
     #                 Values: "pending" | "approved" | "rejected" | "exported"
@@ -383,6 +391,7 @@ class SentinelPlaybook(Base):
             "confidence_score": self.confidence_score,
             "quality_score":    self.quality_score,
             "severity":         self.severity,
+            "quality_score":   getattr(self, "quality_score", 0),
             # MITRE ATT&CK
             "technique_id":     self.technique_id,
             "technique_name":   self.technique_name,
@@ -505,4 +514,34 @@ class SentinelPlaybook(Base):
 
         # Fallback: return the highest version
         return history[0] if history else None
+
+
+class SentinelAuditLog(Base):
+    """
+    ORM model for recording analyst and system audit events on Sentinel playbooks.
+
+    Tracks actions such as approve, reject, regenerate, export, batch operations,
+    and retention purges.
+    """
+
+    __tablename__ = "sentinel_audit_logs"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    playbook_id = Column(String(64), nullable=True, index=True, comment="Associated playbook ID or NULL for system actions")
+    action = Column(String(64), nullable=False, index=True, comment="Audit action: approve | reject | regenerate | export | batch_approve | archive")
+    user = Column(String(128), nullable=False, default="system", comment="Username or service performing the action")
+    details = Column(Text, nullable=True, comment="JSON string or free text providing action metadata")
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True, comment="UTC timestamp of the audit event")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize audit log record to dictionary."""
+        return {
+            "id": self.id,
+            "playbook_id": self.playbook_id,
+            "action": self.action,
+            "user": self.user,
+            "details": self.details,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+        }
 

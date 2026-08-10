@@ -16,8 +16,12 @@
     justify-content: center;
     background: rgba(2, 6, 23, 0.75);
     -webkit-backdrop-filter: blur(8px);
+    -moz-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     animation: pbvOverlayIn 0.25s ease-out;
+    /* Ensure full viewport coverage on all browsers */
+    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 body[data-theme="light"] .playbook-viewer-overlay {
@@ -37,17 +41,21 @@ body[data-theme="light"] .playbook-viewer-overlay {
     max-height: 88vh;
     background: rgba(15, 23, 42, 0.65);
     -webkit-backdrop-filter: blur(20px);
+    -moz-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 20px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* Fix: Firefox needs min-height: 0 on flex children to allow scroll */
+    min-height: 0;
     animation: pbvPanelIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow:
         0 24px 80px -12px rgba(0, 0, 0, 0.6),
         0 0 40px rgba(139, 92, 246, 0.06);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
 }
 
 .playbook-viewer-panel.fullscreen {
@@ -150,6 +158,9 @@ body[data-theme="light"] .playbook-viewer-panel {
     background: rgba(30, 41, 59, 0.5);
     border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     flex-shrink: 0;
+    /* Firefox: prevent header from growing and pushing content off screen */
+    min-height: 0;
+    box-sizing: border-box;
 }
 
 body[data-theme="light"] .pbv-header {
@@ -308,6 +319,10 @@ body[data-theme="light"] .pbv-close-btn:hover {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
     flex-shrink: 0;
     overflow-x: auto;
+    /* Firefox scrollbar styling for the tab bar */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.2) transparent;
+    box-sizing: border-box;
 }
 
 body[data-theme="light"] .pbv-tab-bar {
@@ -333,6 +348,11 @@ body[data-theme="light"] .pbv-tab-bar {
     gap: 0.4rem;
     white-space: nowrap;
     position: relative;
+    /* Firefox: reset default button appearance */
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    flex-shrink: 0;
 }
 
 .pbv-tab:hover {
@@ -1553,6 +1573,69 @@ body[data-theme="light"] .pbv-footer {
     opacity: 1;
 }
 
+/* Focus Ring Outline for PlaybookViewer interactive controls */
+.pbv-close-btn:focus-visible,
+.pbv-action-btn:focus-visible,
+.pbv-tab:focus-visible,
+.pbv-download-btn:focus-visible,
+.pbv-export-item:focus-visible,
+.pbv-table-scroll:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+}
+
+body[data-theme="light"] .pbv-close-btn:focus-visible,
+body[data-theme="light"] .pbv-action-btn:focus-visible,
+body[data-theme="light"] .pbv-tab:focus-visible,
+body[data-theme="light"] .pbv-download-btn:focus-visible,
+body[data-theme="light"] .pbv-export-item:focus-visible,
+body[data-theme="light"] .pbv-table-scroll:focus-visible {
+    outline-color: #6d28d9;
+}
+
+/* Light Theme High Contrast for PlaybookViewer */
+body[data-theme="light"] .pbv-tab.active {
+    color: #5b21b6;
+    border-bottom-color: #5b21b6;
+}
+
+body[data-theme="light"] .pbv-tab {
+    color: #475569;
+}
+
+body[data-theme="light"] .pbv-tab:hover {
+    color: #1e293b;
+}
+
+body[data-theme="light"] .pbv-download-btn {
+    background: rgba(109, 40, 217, 0.05);
+    border-color: rgba(109, 40, 217, 0.15);
+    color: #5b21b6;
+}
+
+body[data-theme="light"] .pbv-download-btn:hover {
+    background: #5b21b6;
+    color: #ffffff;
+}
+
+body[data-theme="light"] .pbv-download-btn-ext {
+    color: #7c3aed;
+}
+
+body[data-theme="light"] .pbv-download-btn:hover .pbv-download-btn-ext {
+    color: #c084fc;
+}
+
+body[data-theme="light"] .pbv-export-item {
+    color: #334155;
+}
+
+body[data-theme="light"] .pbv-export-item:hover {
+    background: rgba(109, 40, 217, 0.06);
+    color: #5b21b6;
+}
+
 /* ═══════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════ */
@@ -1623,6 +1706,12 @@ body[data-theme="light"] .pbv-footer {
     padding: 0.6rem 1.25rem;
     background: rgba(15, 23, 42, 0.4);
     border-bottom: 1px solid rgba(139, 92, 246, 0.06);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    /* Firefox scrollbar fallback */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.15) transparent;
+    box-sizing: border-box;
 }
 
 body[data-theme="light"] .pbv-download-bar {
@@ -1646,6 +1735,13 @@ body[data-theme="light"] .pbv-download-bar {
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
+    /* Cross-browser button reset */
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    text-decoration: none;
 }
 
 .pbv-download-btn:hover:not(:disabled) {

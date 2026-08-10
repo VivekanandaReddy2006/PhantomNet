@@ -48,7 +48,9 @@ print("TASK 1  — tests/test_rule_generator.py  &  sentinel/rule_generator.py")
 print("="*65)
 
 test_path = os.path.join(PROJECT_ROOT, "tests", "test_rule_generator.py")
-impl_path = os.path.join(PROJECT_ROOT, "sentinel", "rule_generator.py")
+impl_path = os.path.join(PROJECT_ROOT, "backend", "sentinel", "rule_generator.py")
+if not os.path.isfile(impl_path):
+    impl_path = os.path.join(PROJECT_ROOT, "sentinel", "rule_generator.py")
 
 check("tests/test_rule_generator.py exists", os.path.isfile(test_path))
 check("sentinel/rule_generator.py exists",   os.path.isfile(impl_path))

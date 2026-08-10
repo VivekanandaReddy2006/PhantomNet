@@ -163,8 +163,8 @@ body[data-theme="light"] .sentinel-card-title { color: #334155; }
   text-transform: uppercase;
 }
 
-body[data-theme="dark"] .sentinel-card-subtitle { color: #475569; }
-body[data-theme="light"] .sentinel-card-subtitle { color: #94a3b8; }
+body[data-theme="dark"] .sentinel-card-subtitle { color: #94a3b8; }
+body[data-theme="light"] .sentinel-card-subtitle { color: #475569; }
 
 .sentinel-card-bar {
   width: 100%;
@@ -276,11 +276,11 @@ body[data-theme="light"] .sentinel-chart-title {
 }
 
 body[data-theme="dark"] .sentinel-chart-subtitle {
-  color: #475569;
+  color: #94a3b8;
 }
 
 body[data-theme="light"] .sentinel-chart-subtitle {
-  color: #94a3b8;
+  color: #475569;
 }
 
 /* --- SVG Chart Canvas --- */
@@ -454,12 +454,12 @@ body[data-theme="light"] .timeline-gridline {
 .timeline-axis-text {
   font-size: 8px;
   font-family: 'JetBrains Mono', monospace;
-  fill: #475569;
+  fill: #cbd5e1;
   font-weight: 500;
 }
 
 body[data-theme="light"] .timeline-axis-text {
-  fill: #94a3b8;
+  fill: #475569;
 }
 
 .timeline-line {
@@ -535,3 +535,48 @@ body[data-theme="light"] .tooltip-date {
 .tooltip-val-num {
   font-weight: 800;
 }
+
+/* --- Empty / Zero-Data State Overlay --- */
+.timeline-empty-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  backdrop-filter: blur(1px);
+  border-radius: 8px;
+}
+
+body[data-theme="dark"] .timeline-empty-overlay {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+body[data-theme="light"] .timeline-empty-overlay {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.timeline-empty-overlay .empty-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #a78bfa;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+}
+
+body[data-theme="light"] .timeline-empty-overlay .empty-title {
+  color: #7c3aed;
+}
+
+.timeline-empty-overlay .empty-subtitle {
+  font-size: 11px;
+  color: #64748b;
+  max-width: 320px;
+  line-height: 1.5;
+}
+

@@ -16,6 +16,18 @@
     flex-direction: column;
     gap: 0.875rem;
     cursor: pointer;
+    outline: none;
+}
+
+.playbook-card:focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+}
+
+body[data-theme="light"] .playbook-card:focus-visible {
+    outline-color: #6d28d9;
+    box-shadow: 0 0 15px rgba(109, 40, 217, 0.3);
 }
 
 body[data-theme="light"] .playbook-card {
@@ -447,3 +459,53 @@ body[data-theme="light"] .playbook-card.selected {
 body[data-theme="light"] .playbook-card.disabled {
     background: rgba(241, 245, 249, 0.5) !important;
 }
+
+/* Light Theme High Contrast Badges & Status Updates */
+body[data-theme="light"] .playbook-technique {
+    color: #5b21b6;
+    background: rgba(109, 40, 217, 0.08);
+    border-color: rgba(109, 40, 217, 0.2);
+}
+
+body[data-theme="light"] .severity-critical {
+    color: #b91c1c;
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.2);
+}
+
+body[data-theme="light"] .severity-high {
+    color: #b45309;
+    background: rgba(217, 119, 6, 0.08);
+    border-color: rgba(217, 119, 6, 0.25);
+}
+
+body[data-theme="light"] .severity-medium {
+    color: #1d4ed8;
+    background: rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.2);
+}
+
+body[data-theme="light"] .severity-low {
+    color: #15803d;
+    background: rgba(22, 163, 74, 0.08);
+    border-color: rgba(22, 163, 74, 0.2);
+}
+
+body[data-theme="light"] .playbook-status-badge.status-approved {
+    color: #047857;
+    background: rgba(5, 150, 105, 0.08);
+    border-color: rgba(5, 150, 105, 0.2);
+}
+
+body[data-theme="light"] .playbook-status-badge.status-draft {
+    color: #475569;
+    background: rgba(71, 85, 105, 0.08);
+    border-color: rgba(71, 85, 105, 0.25);
+}
+
+body[data-theme="light"] .playbook-status-badge.status-rejected {
+    color: #b91c1c;
+    background: rgba(220, 38, 38, 0.08);
+    border-color: rgba(220, 38, 38, 0.25);
+}
+

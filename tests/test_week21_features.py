@@ -1,0 +1,222 @@
+"""
+tests/test_week21_features.py
+------------------------------
+Unit and integration test suite for PhantomNet Week 21 features:
+- CVE Mapping Engine
+- Quality Scoring Engine
+- Webhook Notifier
+- Retention Cleanup Service
+- API Rate Limiter
+- Rule Deduplication
+- Sentinel API Endpoints (Compare, Export ZIP, Timeline, Audit Logs, Templates)
+"""
+
+import sys
+import os
+import pytest
+from fastapi.testclient import TestClient
+
+# Add backend directory to sys.path
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend"))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from main import app
+from database.database import Base, engine, get_db, SessionLocal
+from sentinel.models import SentinelPlaybook, SentinelAuditLog
+from sentinel.cve_mapper import get_cve_mappings
+from sentinel.quality_scorer import calculate_playbook_quality_score
+from sentinel.webhook_notifier import dispatch_webhook_alert
+from sentinel.retention_service import purge_expired_playbooks
+from sentinel.rule_generator import deduplicate_rules
+from api.rate_limiter import check_rate_limit, reset_rate_limits
+
+client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        try:
+            from sqlalchemy import text
+            conn.execute(text("ALTER TABLE sentinel_playbooks ADD COLUMN quality_score INTEGER DEFAULT 0"))
+        except Exception:
+            pass
+    reset_rate_limits()
+    yield
+
+
+# ---------------------------------------------------------------------------
+# 1. CVE Mapper Tests
+# ---------------------------------------------------------------------------
+def test_cve_mapper_by_attack_type():
+    cves = get_cve_mappings(attack_type="HTTP_SQL_INJECTION")
+    assert len(cves) > 0
+    assert any(c["cve_id"] == "CVE-2023-34362" for c in cves)
+
+
+def test_cve_mapper_by_technique_id():
+    cves = get_cve_mappings(technique_id="T1110.001")
+    assert len(cves) > 0
+    assert any(c["cve_id"] == "CVE-2024-6387" for c in cves)
+
+
+# ---------------------------------------------------------------------------
+# 2. Quality Scorer Tests
+# ---------------------------------------------------------------------------
+def test_quality_scorer_complete_playbook():
+    data = {
+        "confidence_score": 0.95,
+        "threat_score": 90.0,
+        "snort_rule": 'alert tcp any any -> any 22 (msg:"Test Rule"; sid:1000001;)',
+        "sigma_rule": "title: Test Rule\nlogsource:\n  category: network_traffic",
+        "technique_id": "T1110.001",
+        "llm_narrative": "This is an AI summary narrative describing a severe brute force attack.",
+        "src_ip": "192.168.1.50",
+        "severity": "CRITICAL",
+    }
+    score = calculate_playbook_quality_score(data)
+    assert 80 <= score <= 100
+
+
+def test_quality_scorer_minimal_playbook():
+    data = {"confidence_score": 0.2, "threat_score": 10.0}
+    score = calculate_playbook_quality_score(data)
+    assert score < 50
+
+
+# ---------------------------------------------------------------------------
+# 3. Rule Deduplication Tests
+# ---------------------------------------------------------------------------
+def test_rule_deduplication():
+    rules = [
+        'alert tcp any any -> any 22 (msg:"SSH Brute Force"; sid:1001;)',
+        'alert tcp any any -> any 22 (msg:"SSH Brute Force"; sid:1001;)',
+        'alert tcp any any -> any 80 (msg:"SQLi Test"; sid:1002;)',
+    ]
+    deduped = deduplicate_rules(rules)
+    assert len(deduped) == 2
+    assert rules[0] in deduped
+    assert rules[2] in deduped
+
+
+# ---------------------------------------------------------------------------
+# 4. Webhook Notifier Tests
+# ---------------------------------------------------------------------------
+def test_webhook_notifier_invalid_url():
+    import asyncio
+    res = asyncio.run(dispatch_webhook_alert("invalid-url", {"playbook_id": "PB-001"}))
+    assert res is False
+
+
+
+# ---------------------------------------------------------------------------
+# 5. Retention Service Tests
+# ---------------------------------------------------------------------------
+def test_retention_service_purge():
+    db = SessionLocal()
+    try:
+        # Create a test rejected playbook
+        pb = SentinelPlaybook(
+            playbook_id="PB-TEST-RETENTION-01",
+            status="rejected",
+            attack_type="TEST_ATTACK",
+            confidence_score=0.1,
+            severity="LOW",
+        )
+        db.add(pb)
+        db.commit()
+
+        # Run purge with 0 days retention to force cleanup
+        res = purge_expired_playbooks(db, rejected_retention_days=0, archived_retention_days=0)
+        assert res["purged_rejected"] >= 1
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# 6. REST API Endpoints Tests
+# ---------------------------------------------------------------------------
+def test_compare_playbooks_api():
+    import uuid
+    uid = uuid.uuid4().hex[:6]
+    db = SessionLocal()
+    try:
+        pb1 = SentinelPlaybook(
+            playbook_id=f"PB-CMP1-{uid}",
+            attack_type="SSH_AUTH_FAILURE",
+            technique_id="T1110.001",
+            confidence_score=0.8,
+            severity="HIGH",
+            status="approved",
+        )
+        pb2 = SentinelPlaybook(
+            playbook_id=f"PB-CMP2-{uid}",
+            attack_type="HTTP_SQL_INJECTION",
+            technique_id="T1190",
+            confidence_score=0.9,
+            severity="CRITICAL",
+            status="approved",
+        )
+        db.add_all([pb1, pb2])
+        db.commit()
+        id1, id2 = pb1.id, pb2.id
+    finally:
+        db.close()
+
+    res = client.get(f"/api/sentinel/playbooks/compare?id1={id1}&id2={id2}")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert "comparison" in json_data
+    assert json_data["comparison"]["diff_summary"]["attack_type_match"] is False
+
+
+def test_export_all_rules_api():
+    res = client.get("/api/sentinel/rules/export-all")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/zip"
+
+
+def test_campaign_timeline_api():
+    res = client.get("/api/sentinel/campaigns/CMP-2026-001/timeline")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert "timeline" in json_data
+
+
+def test_audit_logs_api():
+    res = client.get("/api/sentinel/audit-logs")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert "logs" in json_data
+
+
+def test_templates_api():
+    res = client.get("/api/sentinel/templates")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert isinstance(json_data["templates"], list)
+
+
+def test_template_preview_api():
+    payload = {
+        "template_name": "ssh_brute_force.j2",
+        "context": {
+            "playbook_id": "PB-TEST-PREVIEW",
+            "src_ip": "10.0.0.1",
+            "dst_port": 22,
+            "attack_type": "SSH_AUTH_FAILURE",
+            "technique_id": "T1110.001",
+            "technique_name": "Password Guessing",
+        },
+    }
+    res = client.post("/api/sentinel/templates/preview", json=payload)
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert "rendered_content" in json_data

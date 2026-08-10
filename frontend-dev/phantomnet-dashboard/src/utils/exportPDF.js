@@ -66,7 +66,27 @@ export const generatePDF = (reportData) => {
     doc.text("Restricted Intelligence Report - PhantomNet Active Defense", 14, 285);
   }
 
-  doc.save(`${title.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`);
+  const blob = doc.output("blob");
+  const filename = `${title.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
+
+  const isSafari = typeof navigator !== "undefined" && /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  let finalBlob = blob;
+  if (isSafari && blob.type === "application/pdf") {
+    finalBlob = new Blob([blob], { type: "application/octet-stream" });
+  }
+
+  const url = window.URL.createObjectURL(finalBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Use a safety delay of 250ms to prevent Firefox from interrupting the download
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+  }, 250);
 };
 
 export const exportToPDF = (data, title = "PhantomNet Report") => {

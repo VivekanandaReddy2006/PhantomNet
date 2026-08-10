@@ -37,6 +37,6 @@ export const fetchSentinelStats = async () => {
   }
 
   const data = await response.json();
-  apiCache.set(CACHE_KEY, data, 30000); // 30s TTL
+  apiCache.set(CACHE_KEY, data, 10000); // 10s TTL
   return data;
 };
