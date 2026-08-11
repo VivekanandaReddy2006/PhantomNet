@@ -53,6 +53,7 @@ from sqlalchemy.orm import Session
 from sentinel.mitre_mapper import map_signature, map_signatures
 from sentinel.rule_generator import generate_rules_for_campaign
 from sentinel.stix_enhanced import build_stix_bundle, bundle_to_json
+from sentinel.cve_mapper import get_cve_mappings, format_cve_references
 from sentinel.models import SentinelPlaybook
 from sentinel.confidence_scoring import calculate_confidence, ConfidenceResult
 from sentinel.quality_scorer import calculate_quality_score
@@ -741,6 +742,22 @@ class SentinelService:
                      rules_result["metadata"]["snort_rule_count"],
                      rules_result["metadata"]["sigma_rule_count"])
 
+        # ── Step 5b: CVE Mapping ────────────────────────────────
+        # Resolve CVE IDs for the detected attack type and MITRE technique,
+        # then format them as STIX 2.1-compatible ExternalReference dicts
+        # to be embedded in the AttackPattern object inside the bundle.
+        technique_id_for_cve = primary_technique.get("technique_id") or ""
+        cve_list = get_cve_mappings(
+            attack_type=attack_type,
+            technique_id=technique_id_for_cve,
+        )
+        cve_references = format_cve_references(cve_list)  # STIX ExternalReference dicts
+        cve_ids = [c["cve_id"] for c in cve_list]        # plain list for result_dict
+        logger.info(
+            "Step 5b - CVE mapping: %d CVEs found for attack_type=%r technique_id=%r",
+            len(cve_list), attack_type, technique_id_for_cve,
+        )
+
         # ΓöÇΓöÇ Step 6: Build STIX 2.1 bundle ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
         # Merge source IPs as IOCs + any IOC table entries
         iocs = [{"type": "ip", "value": ip} for ip in source_ips]
@@ -758,15 +775,21 @@ class SentinelService:
         else:
             tlp = "green"
 
+        # Build enriched STIX bundle — CVE ExternalReferences are injected
+        # directly into the AttackPattern object via the cve_references kwarg.
         stix_bundle = build_stix_bundle(
             technique=primary_technique,
             iocs=iocs,
             src_ip=src_ip_primary,
             threat_score=threat_score,
             tlp_level=tlp,
+            cve_references=cve_references if cve_references else None,
         )
         stix_json = bundle_to_json(stix_bundle, pretty=True)
-        logger.info("Step 6 - STIX bundle: %d objects, tlp=%s", len(stix_bundle.objects), tlp)
+        logger.info(
+            "Step 6 - STIX bundle: %d objects, tlp=%s, cve_refs=%d",
+            len(stix_bundle.objects), tlp, len(cve_references),
+        )
 
 
         # ΓöÇΓöÇ Step 7: Render playbook ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
@@ -799,6 +822,9 @@ class SentinelService:
                     "target_ports": normalised_ports,
                     "protocols": protocols,
                     "threat_score": threat_score,
+                    # CVE enrichment — passed through to Jinja2 playbook templates
+                    "cve_references": cve_list,
+                    "cve_ids": cve_ids,
                 }
                 playbook_content = self.playbook_gen.generate(context)
                 template_name = self.playbook_gen._select_template(attack_pattern)
@@ -944,6 +970,10 @@ class SentinelService:
             "signatures_stored_count": sigs_stored,
             "detected_signatures": signature_names,
             "db_record_id": playbook_record.id,
+            # CVE enrichment output
+            "cve_ids": cve_ids,
+            "cve_references": cve_list,
+            "cve_count": len(cve_list),
         }
 
         # Store in seen campaigns to prevent duplicates
