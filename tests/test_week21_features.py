@@ -22,13 +22,21 @@ if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
 from main import app
+# pyrefly: ignore [missing-import]
 from database.database import Base, engine, get_db, SessionLocal
+# pyrefly: ignore [missing-import]
 from sentinel.models import SentinelPlaybook, SentinelAuditLog
+# pyrefly: ignore [missing-import]
 from sentinel.cve_mapper import get_cve_mappings
+# pyrefly: ignore [missing-import]
 from sentinel.quality_scorer import calculate_playbook_quality_score
+# pyrefly: ignore [missing-import]
 from sentinel.webhook_notifier import dispatch_webhook_alert
+# pyrefly: ignore [missing-import]
 from sentinel.retention_service import purge_expired_playbooks
+# pyrefly: ignore [missing-import]
 from sentinel.rule_generator import deduplicate_rules
+# pyrefly: ignore [missing-import]
 from api.rate_limiter import check_rate_limit, reset_rate_limits
 
 client = TestClient(app)
