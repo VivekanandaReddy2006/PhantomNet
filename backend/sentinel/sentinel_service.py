@@ -890,6 +890,16 @@ class SentinelService:
                     "Step 8c - Failed to trigger email alert: %s",
                     email_exc,
                 )
+
+            # ── Step 8d: Trigger webhook alert for CRITICAL playbooks ──
+            try:
+                from sentinel.webhook_notifier import trigger_webhook_alert_async
+                trigger_webhook_alert_async(playbook_record)
+            except Exception as webhook_exc:
+                logger.warning(
+                    "Step 8d - Failed to trigger webhook alert: %s",
+                    webhook_exc,
+                )
         except Exception as exc:
             self.db.rollback()
             logger.error("Failed to persist SentinelPlaybook: %s", exc)
