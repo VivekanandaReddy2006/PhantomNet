@@ -93,6 +93,26 @@
 ---
 {% endblock attack_mapping %}
 
+{% block cve_references %}
+{# CVE References – resolved automatically by PhantomNet CVE Mapping Engine #}
+{% if cve_references is defined and cve_references %}
+## 🔴 CVE References – SSH / Brute Force
+
+The following CVEs are linked to this SSH brute-force attack pattern and are embedded in the STIX 2.1 bundle.
+
+| CVE ID | CVSS Score | Description | NVD Reference |
+|--------|-----------|-------------|---------------|
+{% for cve in cve_references %}
+| [`{{ cve.cve_id }}`]({{ cve.url | default("https://nvd.nist.gov/vuln/detail/" ~ cve.cve_id) }}) | {% if cve.cvss | default("") | float >= 9.0 %}🔴 **{{ cve.cvss }}**{% elif cve.cvss | default("") | float >= 7.0 %}🟠 **{{ cve.cvss }}**{% elif cve.cvss | default("") | float >= 4.0 %}🟡 {{ cve.cvss }}{% else %}🟢 {{ cve.cvss | default("N/A") }}{% endif %} | {{ cve.description | default("No description available.") }} | [View on NVD]({{ cve.url | default("https://nvd.nist.gov/vuln/detail/" ~ cve.cve_id) }}) |
+{% endfor %}
+
+> ⚠️ **Patch Priority:** Remediate CVSS ≥ 9.0 immediately; CVSS 7.0–8.9 within 72 hours.
+> All CVE data sourced from the [NIST NVD](https://nvd.nist.gov/).
+
+---
+{% endif %}
+{% endblock cve_references %}
+
 {# ═══════════════════════════════════════════════════════════════════════════
    BLOCK 3 · CONTAINMENT STEPS  (SSH brute-force 4-phase response)
    ═══════════════════════════════════════════════════════════════════════════ #}
