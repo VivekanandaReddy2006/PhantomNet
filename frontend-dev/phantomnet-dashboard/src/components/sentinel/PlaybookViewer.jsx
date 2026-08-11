@@ -26,6 +26,7 @@ import {
 } from "react-icons/fa";
 import RulePreview from "./RulePreview";
 import ApprovalControls from "./ApprovalControls";
+import CampaignTimelineChart from "./CampaignTimelineChart";
 import LoadingSpinner from "../LoadingSpinner";
 import "../../Styles/components/PlaybookViewer.css";
 
@@ -1283,6 +1284,10 @@ const PlaybookViewer = ({
                   id="pbv-panel-playbook"
                   aria-labelledby="pbv-tab-playbook"
                 >
+                  <div className="pbv-timeline-wrapper" style={{ marginBottom: "1.25rem" }}>
+                    <CampaignTimelineChart campaignId={id ? `PB-${id}` : "CMP-2026-001"} />
+                  </div>
+
                   <MarkdownRenderer
                     key={resolvedMarkdown}
                     content={resolvedMarkdown}

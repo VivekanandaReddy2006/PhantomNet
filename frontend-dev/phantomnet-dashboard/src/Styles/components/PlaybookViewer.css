@@ -2276,4 +2276,23 @@ body[data-theme="light"] .pbv-export-item:hover {
     animation: pbvSpin 1s linear infinite;
 }
 
+/* ── Campaign Timeline Chart Container Styles ── */
+.pbv-timeline-wrapper {
+    transition: all 0.3s ease;
+}
+
+.pbv-timeline-wrapper #campaign-timeline-chart-container {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(51, 65, 85, 0.7);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+body[data-theme="light"] .pbv-timeline-wrapper #campaign-timeline-chart-container {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(226, 232, 240, 0.9);
+    color: #1e293b;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+
 
