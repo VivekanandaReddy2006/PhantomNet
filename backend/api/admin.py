@@ -197,6 +197,7 @@ DEFAULT_CONFIG = [
         "category": "threat_detection",
         "sentinel_llm_enabled": False,
     },
+    {"key": "webhook_url", "value": "", "category": "threat_detection"},
     # Honeypot
     {"key": "deception_mode", "value": "balanced", "category": "honeypot"},
     {"key": "ssh_banner", "value": "OpenSSH_8.9", "category": "honeypot"},
