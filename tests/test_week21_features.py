@@ -90,15 +90,34 @@ def test_quality_scorer_minimal_playbook():
 # 3. Rule Deduplication Tests
 # ---------------------------------------------------------------------------
 def test_rule_deduplication():
-    rules = [
-        'alert tcp any any -> any 22 (msg:"SSH Brute Force"; sid:1001;)',
-        'alert tcp any any -> any 22 (msg:"SSH Brute Force"; sid:1001;)',
-        'alert tcp any any -> any 80 (msg:"SQLi Test"; sid:1002;)',
-    ]
+    # 1. Identical Snort rules with DIFFERENT SIDs
+    snort_1 = 'alert tcp 192.168.1.5 any -> $HOME_NET 22 (msg:"SSH Brute Force"; sid:1001;)'
+    snort_2 = 'alert tcp 192.168.1.5 any -> $HOME_NET 22 (msg:"SSH Brute Force"; sid:1002;)'
+    # 2. Snort rule targeting different port
+    snort_3 = 'alert tcp 192.168.1.5 any -> $HOME_NET 80 (msg:"SQLi Test"; sid:1003;)'
+    
+    # 3. Identical Sigma rules with DIFFERENT titles
+    sigma_1 = "title: 'Campaign CAMP-001 Detection'\nstatus: experimental\nlogsource:\n  category: network_traffic\ndetection:\n  selection:\n    src_ip: '10.0.0.1'\n  condition: selection\nlevel: high\n"
+    sigma_2 = "title: 'Campaign CAMP-002 Detection'\nstatus: experimental\nlogsource:\n  category: network_traffic\ndetection:\n  selection:\n    src_ip: '10.0.0.1'\n  condition: selection\nlevel: high\n"
+    # 4. Sigma rule targeting different ip
+    sigma_3 = "title: 'Campaign CAMP-003 Detection'\nstatus: experimental\nlogsource:\n  category: network_traffic\ndetection:\n  selection:\n    src_ip: '192.168.1.200'\n  condition: selection\nlevel: high\n"
+    
+    rules = [snort_1, snort_2, snort_3, sigma_1, sigma_2, sigma_3]
+    
     deduped = deduplicate_rules(rules)
-    assert len(deduped) == 2
-    assert rules[0] in deduped
-    assert rules[2] in deduped
+    
+    # Expected: snort_1, snort_3, sigma_1, sigma_3 (4 unique rules)
+    assert len(deduped) == 4
+    
+    # Check that the first occurrences are retained
+    assert snort_1 in deduped
+    assert snort_3 in deduped
+    assert sigma_1 in deduped
+    assert sigma_3 in deduped
+    
+    # Check that the duplicates are stripped
+    assert snort_2 not in deduped
+    assert sigma_2 not in deduped
 
 
 # ---------------------------------------------------------------------------
