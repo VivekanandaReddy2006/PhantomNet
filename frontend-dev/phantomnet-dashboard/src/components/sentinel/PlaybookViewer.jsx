@@ -23,10 +23,12 @@ import {
   FaChevronUp,
   FaFilePdf,
   FaSpinner,
+  FaHistory,
 } from "react-icons/fa";
 import RulePreview from "./RulePreview";
 import ApprovalControls from "./ApprovalControls";
 import CampaignTimelineChart from "./CampaignTimelineChart";
+import ExportHistoryPanel from "./ExportHistoryPanel";
 import LoadingSpinner from "../LoadingSpinner";
 import "../../Styles/components/PlaybookViewer.css";
 
@@ -56,9 +58,10 @@ const getRemarkGfm = () => {
    ═══════════════════════════════════════════════════════════════ */
 
 const TABS = [
-  { key: "playbook", label: "Playbook",    icon: FaBook },
-  { key: "snort",    label: "Snort Rules",  icon: FaShieldAlt },
-  { key: "sigma",    label: "Sigma Rules",  icon: FaFileCode },
+  { key: "playbook", label: "Playbook",       icon: FaBook },
+  { key: "snort",    label: "Snort Rules",     icon: FaShieldAlt },
+  { key: "sigma",    label: "Sigma Rules",     icon: FaFileCode },
+  { key: "history",  label: "Export History",  icon: FaHistory },
 ];
 
 /* ═══════════════════════════════════════════════════════════════
@@ -766,6 +769,7 @@ const PlaybookViewer = ({
   const [userRole, setUserRole] = useState("Viewer");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportRefreshTrigger, setExportRefreshTrigger] = useState(0);
   const dropdownRef = useRef(null);
 
   // Read current logged-in user role from localStorage
@@ -1008,6 +1012,7 @@ const PlaybookViewer = ({
       if (onStatusChange) {
         onStatusChange("exported");
       }
+      setExportRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error(`Error exporting playbook in format ${format}:`, error);
     } finally {
@@ -1320,6 +1325,23 @@ const PlaybookViewer = ({
                   aria-labelledby="pbv-tab-sigma"
                 >
                   <RulePreview snortRule="" sigmaRule={sigmaRule} />
+                </div>
+              )}
+
+              {/* ── Export History Log Panel Tab ── */}
+              {activeTab === "history" && (
+                <div
+                  className="pbv-history-section"
+                  role="tabpanel"
+                  id="pbv-panel-history"
+                  aria-labelledby="pbv-tab-history"
+                  style={{ padding: "0.5rem" }}
+                >
+                  <ExportHistoryPanel
+                    playbookId={id}
+                    playbookCode={id ? `PB-${id}` : title}
+                    refreshTrigger={exportRefreshTrigger}
+                  />
                 </div>
               )}
             </>

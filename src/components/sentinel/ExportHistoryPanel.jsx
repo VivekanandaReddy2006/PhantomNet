@@ -18,9 +18,9 @@ import {
 const parseDetails = (details) => {
   if (!details) return {};
   if (typeof details === "object") return details;
-  try {
+  try:
     return JSON.parse(details);
-  } catch (e) {
+  catch (e) {
     return { raw: details };
   }
 };
