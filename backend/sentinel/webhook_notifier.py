@@ -161,3 +161,10 @@ def trigger_webhook_alert_async(playbook) -> None:
             "Failed to trigger webhook alert for playbook %s: %s",
             getattr(playbook, "playbook_id", "?"), exc
         )
+
+
+async def dispatch_webhook_alert(url: str, payload: Dict[str, Any], max_retries: int = 1) -> bool:
+    """Async helper for dispatching webhook alert payload to a specific URL."""
+    notifier = get_webhook_notifier()
+    return notifier._send_with_retry(url=url, payload=payload, max_retries=max_retries)
+
