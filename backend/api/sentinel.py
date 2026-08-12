@@ -46,7 +46,7 @@ from fastapi.responses import StreamingResponse
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field, field_validator
 # pyrefly: ignore [missing-import]
-from sqlalchemy import func
+from sqlalchemy import func, or_
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
@@ -1050,7 +1050,7 @@ def export_playbook(
         # Should be unreachable — guard only
         raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}")
 
-    # ── Update playbook status to 'exported' & log audit ──────────────────
+    # ── Update playbook status to 'exported' & record Audit Log ───────────
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
@@ -1059,16 +1059,16 @@ def export_playbook(
             db=db,
             action="export",
             user=user_name,
-            playbook_id=row.playbook_id,
-            details={"export_format": fmt, "id": playbook_id},
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            details={"export_format": fmt, "filename": filename, "id": playbook_id},
             commit=False,
         )
         db.commit()
-        logger.info("Playbook id=%d status updated to 'exported'", playbook_id)
+        logger.info("Playbook id=%d status updated to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
         db.rollback()
         logger.warning(
-            "Failed to update export status for id=%d: %s (export will still proceed)",
+            "Failed to update export status/audit log for id=%d: %s (export will still proceed)",
             playbook_id,
             exc,
         )
@@ -1200,7 +1200,7 @@ def export_playbook_pdf(
         pdf_bytes = _MINIMAL_PDF
         pdf_generator_used = "placeholder"
 
-    # ── Mark playbook as exported in the database & log audit ─────────────
+    # ── Mark playbook as exported in the database & record Audit Log ──────
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
@@ -1209,12 +1209,12 @@ def export_playbook_pdf(
             db=db,
             action="export",
             user=user_name,
-            playbook_id=row.playbook_id,
-            details={"export_format": "pdf", "id": playbook_id},
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            details={"export_format": "pdf", "filename": filename, "generator": pdf_generator_used, "id": playbook_id},
             commit=False,
         )
         db.commit()
-        logger.info("Playbook id=%d status set to 'exported'", playbook_id)
+        logger.info("Playbook id=%d status set to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
         db.rollback()
         logger.warning(
@@ -1961,7 +1961,7 @@ def get_audit_logs(
     offset: int = Query(0, ge=0, description="Pagination offset"),
     action: Optional[str] = Query(None, description="Filter by action name (e.g. approve, reject, export, batch_approve, regenerate)"),
     user: Optional[str] = Query(None, description="Filter by username or service name"),
-    playbook_id: Optional[str] = Query(None, description="Filter by associated playbook ID"),
+    playbook_id: Optional[str] = Query(None, description="Filter by associated playbook ID or DB integer ID"),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """
@@ -1973,7 +1973,17 @@ def get_audit_logs(
     if user and user.strip():
         query = query.filter(SentinelAuditLog.user == user.strip())
     if playbook_id and playbook_id.strip():
-        query = query.filter(SentinelAuditLog.playbook_id == playbook_id.strip())
+        p_val = playbook_id.strip()
+        conditions = [
+            SentinelAuditLog.playbook_id == p_val,
+            SentinelAuditLog.playbook_id == f"PB-{p_val}",
+            SentinelAuditLog.playbook_id == str(p_val),
+        ]
+        if p_val.isdigit():
+            pb_row = db.query(SentinelPlaybook.playbook_id).filter(SentinelPlaybook.id == int(p_val)).first()
+            if pb_row and pb_row[0]:
+                conditions.append(SentinelAuditLog.playbook_id == pb_row[0])
+        query = query.filter(or_(*conditions))
 
     total = query.count()
     logs = (
@@ -2012,6 +2022,40 @@ def get_v1_audit_logs(
         db=db,
     )
 
+
+
+# ---------------------------------------------------------------------------
+# 21b. GET /api/sentinel/playbooks/{playbook_id}/export-history
+# ---------------------------------------------------------------------------
+
+@router.get("/playbooks/{playbook_id}/export-history", response_model=Dict[str, Any])
+def get_playbook_export_history(
+    playbook_id: int = Path(..., ge=1, description="Database primary key ID of the playbook"),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve export audit history timeline for a specific playbook.
+    Returns audit records where action='export' matching the playbook.
+    """
+    row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == playbook_id).first()
+    pb_str_id = row.playbook_id if row else f"PB-{playbook_id}"
+
+    logs = db.query(SentinelAuditLog).filter(
+        SentinelAuditLog.action == "export",
+        (SentinelAuditLog.playbook_id == pb_str_id) |
+        (SentinelAuditLog.playbook_id == str(playbook_id)) |
+        (SentinelAuditLog.playbook_id == f"PB-{playbook_id}")
+    ).order_by(SentinelAuditLog.timestamp.desc()).limit(limit).all()
+
+    return {
+        "status": "success",
+        "playbook_id": pb_str_id,
+        "db_id": playbook_id,
+        "total": len(logs),
+        "logs": [l.to_dict() for l in logs],
+        "export_history": [l.to_dict() for l in logs],
+    }
 
 
 # ---------------------------------------------------------------------------
