@@ -46,13 +46,15 @@ from fastapi.responses import StreamingResponse
 # pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field, field_validator
 # pyrefly: ignore [missing-import]
-from sqlalchemy import func
+from sqlalchemy import func, or_
 # pyrefly: ignore [missing-import]
 from sqlalchemy.orm import Session
 
 from database.database import get_db
 # pyrefly: ignore [missing-import]
 from sentinel.models import SentinelPlaybook, SentinelAuditLog
+# pyrefly: ignore [missing-import]
+from sentinel.audit_logger import log_audit_event
 # pyrefly: ignore [missing-import]
 from sentinel.mitre_mapper import get_all_techniques
 # pyrefly: ignore [missing-import]
@@ -68,6 +70,8 @@ logger = logging.getLogger("api.sentinel")
 # Router
 # ---------------------------------------------------------------------------
 router = APIRouter(prefix="/api/sentinel", tags=["Sentinel"])
+v1_router = APIRouter(prefix="/api/v1/sentinel", tags=["Sentinel Compliance"])
+
 
 
 # ---------------------------------------------------------------------------
@@ -684,6 +688,15 @@ def generate_playbook(
         sentinel_metrics.inc_playbooks_total()
         sentinel_metrics.observe_generation(duration_seconds)
 
+        log_audit_event(
+            db=db,
+            action="generate",
+            user="system",
+            playbook_id=result["playbook_id"],
+            details={"campaign_id": request.campaign_id, "attack_type": result["attack_type"]},
+            commit=True,
+        )
+
         return {
             "status": "success",
             "playbook_id": result["playbook_id"],
@@ -749,9 +762,20 @@ def approve_playbook(
         )
 
     try:
+        old_status = row.status
         row.status = "approved"
         row.reviewed_by = body.reviewed_by
         row.reviewed_at = datetime.utcnow()
+        
+        log_audit_event(
+            db=db,
+            action="approve",
+            user=body.reviewed_by,
+            playbook_id=row.playbook_id,
+            details={"previous_status": old_status, "new_status": "approved"},
+            commit=False,
+        )
+
         db.commit()
         db.refresh(row)
         
@@ -824,9 +848,20 @@ def reject_playbook(
         )
 
     try:
+        old_status = row.status
         row.status = "rejected"
         row.reviewed_by = body.reviewed_by
         row.reviewed_at = datetime.utcnow()
+
+        log_audit_event(
+            db=db,
+            action="reject",
+            user=body.reviewed_by,
+            playbook_id=row.playbook_id,
+            details={"previous_status": old_status, "new_status": "rejected"},
+            commit=False,
+        )
+
         db.commit()
         db.refresh(row)
         logger.info(
@@ -1019,17 +1054,15 @@ def export_playbook(
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
-        db.commit()
-
-        user_name = "analyst"
-        audit_entry = SentinelAuditLog(
-            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+        user_name = getattr(current_user, "username", "analyst") if current_user else "analyst"
+        log_audit_event(
+            db=db,
             action="export",
             user=user_name,
-            details=json.dumps({"format": fmt, "filename": filename}),
-            timestamp=datetime.utcnow()
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            details={"export_format": fmt, "filename": filename, "id": playbook_id},
+            commit=False,
         )
-        db.add(audit_entry)
         db.commit()
         logger.info("Playbook id=%d status updated to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
@@ -1171,17 +1204,15 @@ def export_playbook_pdf(
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
-        db.commit()
-
-        user_name = current_user.username if (current_user and hasattr(current_user, "username")) else "analyst"
-        audit_entry = SentinelAuditLog(
-            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+        user_name = getattr(current_user, "username", "analyst") if current_user else "analyst"
+        log_audit_event(
+            db=db,
             action="export",
             user=user_name,
-            details=json.dumps({"format": "pdf", "filename": filename, "generator": pdf_generator_used}),
-            timestamp=datetime.utcnow()
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            details={"export_format": "pdf", "filename": filename, "generator": pdf_generator_used, "id": playbook_id},
+            commit=False,
         )
-        db.add(audit_entry)
         db.commit()
         logger.info("Playbook id=%d status set to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
@@ -1553,6 +1584,14 @@ def batch_approve_playbooks(
             row.status = "approved"
             row.reviewed_by = body.reviewed_by
             row.reviewed_at = datetime.utcnow()
+            log_audit_event(
+                db=db,
+                action="batch_approve",
+                user=body.reviewed_by,
+                playbook_id=row.playbook_id,
+                details={"id": pb_id},
+                commit=False,
+            )
             db.commit()
 
             # pyrefly: ignore [missing-import]
@@ -1618,6 +1657,14 @@ def batch_reject_playbooks(
             row.status = "rejected"
             row.reviewed_by = body.reviewed_by
             row.reviewed_at = datetime.utcnow()
+            log_audit_event(
+                db=db,
+                action="batch_reject",
+                user=body.reviewed_by,
+                playbook_id=row.playbook_id,
+                details={"id": pb_id},
+                commit=False,
+            )
             db.commit()
             
             results["successful"].append(pb_id)
@@ -1672,6 +1719,15 @@ def regenerate_playbook(
             original_playbook_id=playbook_id,
             reason=body.reason,
             background_tasks=background_tasks,
+        )
+
+        log_audit_event(
+            db=db,
+            action="regenerate",
+            user="analyst",
+            playbook_id=new_playbook.playbook_id,
+            details={"reason": body.reason, "parent_db_id": playbook_id, "new_version": new_playbook.version},
+            commit=True,
         )
 
         return {
@@ -1901,31 +1957,71 @@ def get_campaign_timeline(
 
 @router.get("/audit-logs", response_model=Dict[str, Any])
 def get_audit_logs(
-    limit: int = Query(50, ge=1, le=500),
-    playbook_id: Optional[str] = Query(None, description="Filter by playbook ID or DB integer ID"),
-    action: Optional[str] = Query(None, description="Filter by action type (e.g. export)"),
-    db: Session = Depends(get_db)
-):
+    limit: int = Query(50, ge=1, le=500, description="Max audit records to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    action: Optional[str] = Query(None, description="Filter by action name (e.g. approve, reject, export, batch_approve, regenerate)"),
+    user: Optional[str] = Query(None, description="Filter by username or service name"),
+    playbook_id: Optional[str] = Query(None, description="Filter by associated playbook ID or DB integer ID"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
     """
-    Retrieve recent audit logs for analyst actions.
-    Supports optional filtering by playbook_id and action.
+    Retrieve audit activity logs for analyst actions and compliance tracking.
     """
     query = db.query(SentinelAuditLog)
-    if playbook_id:
-        query = query.filter(
-            (SentinelAuditLog.playbook_id == playbook_id) |
-            (SentinelAuditLog.playbook_id == f"PB-{playbook_id}") |
-            (SentinelAuditLog.playbook_id == str(playbook_id))
-        )
-    if action:
-        query = query.filter(SentinelAuditLog.action == action)
+    if action and action.strip():
+        query = query.filter(SentinelAuditLog.action == action.strip())
+    if user and user.strip():
+        query = query.filter(SentinelAuditLog.user == user.strip())
+    if playbook_id and playbook_id.strip():
+        p_val = playbook_id.strip()
+        conditions = [
+            SentinelAuditLog.playbook_id == p_val,
+            SentinelAuditLog.playbook_id == f"PB-{p_val}",
+            SentinelAuditLog.playbook_id == str(p_val),
+        ]
+        if p_val.isdigit():
+            pb_row = db.query(SentinelPlaybook.playbook_id).filter(SentinelPlaybook.id == int(p_val)).first()
+            if pb_row and pb_row[0]:
+                conditions.append(SentinelAuditLog.playbook_id == pb_row[0])
+        query = query.filter(or_(*conditions))
 
-    logs = query.order_by(SentinelAuditLog.timestamp.desc()).limit(limit).all()
+    total = query.count()
+    logs = (
+        query.order_by(SentinelAuditLog.timestamp.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     return {
         "status": "success",
-        "total": len(logs),
+        "total": total,
+        "limit": limit,
+        "offset": offset,
         "logs": [l.to_dict() for l in logs],
     }
+
+
+@v1_router.get("/audit-logs", response_model=Dict[str, Any])
+def get_v1_audit_logs(
+    limit: int = Query(50, ge=1, le=500, description="Max audit records to return"),
+    offset: int = Query(0, ge=0, description="Pagination offset"),
+    action: Optional[str] = Query(None, description="Filter by action name"),
+    user: Optional[str] = Query(None, description="Filter by username"),
+    playbook_id: Optional[str] = Query(None, description="Filter by playbook ID"),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    GET /api/v1/sentinel/audit-logs - Compliance tracking endpoint for audit logs.
+    """
+    return get_audit_logs(
+        limit=limit,
+        offset=offset,
+        action=action,
+        user=user,
+        playbook_id=playbook_id,
+        db=db,
+    )
+
 
 
 # ---------------------------------------------------------------------------

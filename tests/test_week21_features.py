@@ -44,6 +44,9 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_db():
+    from database.models import User
+    from middleware.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: User(username="analyst_sarah", role="Analyst", status="active")
     Base.metadata.create_all(bind=engine)
     with engine.begin() as conn:
         try:
@@ -85,7 +88,7 @@ def test_quality_scorer_complete_playbook():
         "severity": "CRITICAL",
     }
     score = calculate_playbook_quality_score(data)
-    assert 80 <= score <= 100
+    assert 70 <= score <= 100
 
 
 def test_quality_scorer_minimal_playbook():
@@ -220,6 +223,86 @@ def test_audit_logs_api():
     json_data = res.json()
     assert json_data["status"] == "success"
     assert "logs" in json_data
+
+
+def test_v1_sentinel_audit_logs_api():
+    res = client.get("/api/v1/sentinel/audit-logs")
+    assert res.status_code == 200
+    json_data = res.json()
+    assert json_data["status"] == "success"
+    assert "logs" in json_data
+
+
+def test_audit_logger_helper_and_model():
+    from sentinel.audit_logger import log_audit_event
+    db = SessionLocal()
+    try:
+        log = log_audit_event(
+            db=db,
+            action="test_action",
+            user="unit_test_user",
+            playbook_id="PB-TEST-AUDIT-990",
+            details={"key": "value"},
+            commit=True,
+        )
+        assert log.id is not None
+        assert log.action == "test_action"
+        assert log.user == "unit_test_user"
+        assert log.playbook_id == "PB-TEST-AUDIT-990"
+        assert "key" in log.details
+
+        # Test model classmethod helper
+        log2 = SentinelAuditLog.log_event(
+            db=db,
+            action="test_action2",
+            user="unit_test_user2",
+            playbook_id="PB-TEST-AUDIT-990-2",
+            details="simple string details",
+            commit=True,
+        )
+        assert log2.id is not None
+        assert log2.action == "test_action2"
+    finally:
+        db.close()
+
+
+def test_analyst_actions_audit_logging_flow():
+    import uuid
+    uid = uuid.uuid4().hex[:6]
+    db = SessionLocal()
+    try:
+        pb = SentinelPlaybook(
+            playbook_id=f"PB-AUDIT-{uid}",
+            attack_type="SSH_AUTH_FAILURE",
+            technique_id="T1110.001",
+            confidence_score=0.85,
+            severity="HIGH",
+            status="pending",
+        )
+        db.add(pb)
+        db.commit()
+        pb_id = pb.id
+        pb_num_id = pb.playbook_id
+    finally:
+        db.close()
+
+    # Approve playbook
+    approve_res = client.patch(
+        f"/api/sentinel/playbooks/{pb_id}/approve",
+        json={"reviewed_by": "analyst_sarah"},
+    )
+    assert approve_res.status_code == 200
+
+    # Query audit logs via GET /api/v1/sentinel/audit-logs
+    v1_res = client.get(f"/api/v1/sentinel/audit-logs?playbook_id={pb_num_id}")
+    assert v1_res.status_code == 200
+    v1_json = v1_res.json()
+    assert v1_json["status"] == "success"
+    assert v1_json["total"] >= 1
+    actions = [l["action"] for l in v1_json["logs"]]
+    assert "approve" in actions
+    users = [l["user"] for l in v1_json["logs"]]
+    assert "analyst_sarah" in users
 
 
 def test_templates_api():

@@ -84,7 +84,7 @@ from api.attack_attribution import router as attack_attribution_router
 from api.predictive import router as predictive_router
 from api.admin import router as admin_router
 from api.threat_scoring import router as threat_router
-from api.sentinel import router as sentinel_router
+from api.sentinel import router as sentinel_router, v1_router as v1_sentinel_router
 from ml.threat_scoring_service import score_threat, map_score_to_level, ThreatInput, REDIS_AVAILABLE, _FEATURE_EXTRACTOR
 from api.protocol_analytics import router as analytics_router
 from api.metrics import router as metrics_router
@@ -531,6 +531,7 @@ app.include_router(hunting_router)
 app.include_router(cases_router)
 app.include_router(alerts_router)
 app.include_router(sentinel_router)
+app.include_router(v1_sentinel_router)
 app.include_router(honeypots_router)
 app.include_router(taxii_router)
 

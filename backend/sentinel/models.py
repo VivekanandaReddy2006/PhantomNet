@@ -51,7 +51,7 @@ from __future__ import annotations
 
 from datetime import datetime
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger("sentinel.models")
 
@@ -544,4 +544,39 @@ class SentinelAuditLog(Base):
             "details": self.details,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None,
         }
+
+    @classmethod
+    def log_event(
+        cls,
+        db,
+        action: str,
+        user: str = "system",
+        playbook_id: Optional[str] = None,
+        details: Optional[Union[Dict[str, Any], str]] = None,
+        commit: bool = False,
+    ) -> "SentinelAuditLog":
+        """
+        Record an audit log entry using audit_logger module.
+
+        Args:
+            db: Active SQLAlchemy database session.
+            action: Audit action name (approve, reject, export, regenerate, etc.).
+            user: Username or service performing the action.
+            playbook_id: Optional target playbook ID.
+            details: Event metadata dictionary or string.
+            commit: Whether to commit immediately.
+
+        Returns:
+            Created SentinelAuditLog instance.
+        """
+        from sentinel.audit_logger import log_audit_event
+        return log_audit_event(
+            db=db,
+            action=action,
+            user=user,
+            playbook_id=playbook_id,
+            details=details,
+            commit=commit,
+        )
+
 
