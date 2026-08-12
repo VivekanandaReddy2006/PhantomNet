@@ -41,7 +41,7 @@ from database.models import Base, PacketLog, TrafficStats
 # =========================
 # Must be imported BEFORE Base.metadata.create_all() runs in lifespan()
 # so SQLAlchemy registers sentinel_playbooks in the shared metadata.
-from sentinel.models import SentinelPlaybook  # noqa: F401  (side-effect import)
+from sentinel.models import SentinelPlaybook, SentinelAuditLog  # noqa: F401  (side-effect import)
 from sentinel.sentinel_service import SentinelService
 
 # =========================

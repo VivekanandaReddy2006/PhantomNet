@@ -1015,16 +1015,27 @@ def export_playbook(
         # Should be unreachable — guard only
         raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}")
 
-    # ── Update playbook status to 'exported' ──────────────────────────────
+    # ── Update playbook status to 'exported' & record Audit Log ───────────
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
         db.commit()
-        logger.info("Playbook id=%d status updated to 'exported'", playbook_id)
+
+        user_name = "analyst"
+        audit_entry = SentinelAuditLog(
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            action="export",
+            user=user_name,
+            details=json.dumps({"format": fmt, "filename": filename}),
+            timestamp=datetime.utcnow()
+        )
+        db.add(audit_entry)
+        db.commit()
+        logger.info("Playbook id=%d status updated to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
         db.rollback()
         logger.warning(
-            "Failed to update export status for id=%d: %s (export will still proceed)",
+            "Failed to update export status/audit log for id=%d: %s (export will still proceed)",
             playbook_id,
             exc,
         )
@@ -1156,12 +1167,23 @@ def export_playbook_pdf(
         pdf_bytes = _MINIMAL_PDF
         pdf_generator_used = "placeholder"
 
-    # ── Mark playbook as exported in the database ─────────────────────────
+    # ── Mark playbook as exported in the database & record Audit Log ──────
     try:
         row.status = "exported"
         row.updated_at = datetime.utcnow()
         db.commit()
-        logger.info("Playbook id=%d status set to 'exported'", playbook_id)
+
+        user_name = current_user.username if (current_user and hasattr(current_user, "username")) else "analyst"
+        audit_entry = SentinelAuditLog(
+            playbook_id=row.playbook_id or f"PB-{playbook_id}",
+            action="export",
+            user=user_name,
+            details=json.dumps({"format": "pdf", "filename": filename, "generator": pdf_generator_used}),
+            timestamp=datetime.utcnow()
+        )
+        db.add(audit_entry)
+        db.commit()
+        logger.info("Playbook id=%d status set to 'exported' and audit log recorded", playbook_id)
     except Exception as exc:
         db.rollback()
         logger.warning(
@@ -1880,16 +1902,63 @@ def get_campaign_timeline(
 @router.get("/audit-logs", response_model=Dict[str, Any])
 def get_audit_logs(
     limit: int = Query(50, ge=1, le=500),
+    playbook_id: Optional[str] = Query(None, description="Filter by playbook ID or DB integer ID"),
+    action: Optional[str] = Query(None, description="Filter by action type (e.g. export)"),
     db: Session = Depends(get_db)
 ):
     """
     Retrieve recent audit logs for analyst actions.
+    Supports optional filtering by playbook_id and action.
     """
-    logs = db.query(SentinelAuditLog).order_by(SentinelAuditLog.timestamp.desc()).limit(limit).all()
+    query = db.query(SentinelAuditLog)
+    if playbook_id:
+        query = query.filter(
+            (SentinelAuditLog.playbook_id == playbook_id) |
+            (SentinelAuditLog.playbook_id == f"PB-{playbook_id}") |
+            (SentinelAuditLog.playbook_id == str(playbook_id))
+        )
+    if action:
+        query = query.filter(SentinelAuditLog.action == action)
+
+    logs = query.order_by(SentinelAuditLog.timestamp.desc()).limit(limit).all()
     return {
         "status": "success",
         "total": len(logs),
         "logs": [l.to_dict() for l in logs],
+    }
+
+
+# ---------------------------------------------------------------------------
+# 21b. GET /api/sentinel/playbooks/{playbook_id}/export-history
+# ---------------------------------------------------------------------------
+
+@router.get("/playbooks/{playbook_id}/export-history", response_model=Dict[str, Any])
+def get_playbook_export_history(
+    playbook_id: int = Path(..., ge=1, description="Database primary key ID of the playbook"),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db)
+):
+    """
+    Retrieve export audit history timeline for a specific playbook.
+    Returns audit records where action='export' matching the playbook.
+    """
+    row = db.query(SentinelPlaybook).filter(SentinelPlaybook.id == playbook_id).first()
+    pb_str_id = row.playbook_id if row else f"PB-{playbook_id}"
+
+    logs = db.query(SentinelAuditLog).filter(
+        SentinelAuditLog.action == "export",
+        (SentinelAuditLog.playbook_id == pb_str_id) |
+        (SentinelAuditLog.playbook_id == str(playbook_id)) |
+        (SentinelAuditLog.playbook_id == f"PB-{playbook_id}")
+    ).order_by(SentinelAuditLog.timestamp.desc()).limit(limit).all()
+
+    return {
+        "status": "success",
+        "playbook_id": pb_str_id,
+        "db_id": playbook_id,
+        "total": len(logs),
+        "logs": [l.to_dict() for l in logs],
+        "export_history": [l.to_dict() for l in logs],
     }
 
 

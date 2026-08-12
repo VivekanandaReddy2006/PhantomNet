@@ -247,3 +247,46 @@ def test_template_preview_api():
     json_data = res.json()
     assert json_data["status"] == "success"
     assert "rendered_content" in json_data
+
+
+def test_export_playbook_audit_history():
+    import uuid
+    uid = uuid.uuid4().hex[:6]
+    db = SessionLocal()
+    try:
+        pb = SentinelPlaybook(
+            playbook_id=f"PB-AUDIT-{uid}",
+            attack_type="HTTP_SQL_INJECTION",
+            technique_id="T1190",
+            confidence_score=0.95,
+            severity="CRITICAL",
+            status="approved",
+        )
+        db.add(pb)
+        db.commit()
+        pb_id = pb.id
+    finally:
+        db.close()
+
+    # Perform export in JSON format
+    res_export = client.post(f"/api/sentinel/playbooks/{pb_id}/export?format=json")
+    assert res_export.status_code == 200
+
+    # Perform export in PDF format
+    res_pdf = client.post(f"/api/sentinel/playbooks/{pb_id}/export/pdf")
+    assert res_pdf.status_code == 200
+
+    # Fetch export history endpoint
+    res_history = client.get(f"/api/sentinel/playbooks/{pb_id}/export-history")
+    assert res_history.status_code == 200
+    history_data = res_history.json()
+    assert history_data["status"] == "success"
+    assert history_data["total"] >= 2
+    assert any("pdf" in str(log.get("details", "")).lower() for log in history_data["export_history"])
+    assert any("json" in str(log.get("details", "")).lower() for log in history_data["export_history"])
+
+    # Query filtered audit logs
+    res_filtered = client.get(f"/api/sentinel/audit-logs?playbook_id={pb_id}&action=export")
+    assert res_filtered.status_code == 200
+    assert len(res_filtered.json()["logs"]) >= 2
+
