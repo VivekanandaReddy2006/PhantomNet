@@ -931,6 +931,8 @@ def generate_rules_for_campaign(
 def deduplicate_rules(rule_list: list[str]) -> list[str]:
     """
     Deduplicate a list of rule strings using MD5/SHA hash fingerprinting of normalized text.
+    Variable fields like Snort 'sid' and Sigma 'title' are stripped before fingerprinting
+    to ensure rules targeting identical patterns are properly deduplicated across different campaigns.
 
     Args:
         rule_list: List of raw rule strings (Snort or Sigma).
@@ -939,17 +941,36 @@ def deduplicate_rules(rule_list: list[str]) -> list[str]:
         Deduplicated list preserving first occurrence order.
     """
     import hashlib
+    import re
     seen_hashes = set()
     deduped = []
+    
+    # Regex patterns for variable fields
+    # Match Snort sid: e.g. "sid:1000001;" or "sid: 1000001;"
+    snort_sid_pattern = re.compile(r"sid\s*:\s*\d+\s*;?", re.IGNORECASE)
+    # Match Sigma title: e.g. "title: 'Campaign CAMP-XYZ Detection...'"
+    sigma_title_pattern = re.compile(r"^title\s*:.*$", re.MULTILINE | re.IGNORECASE)
+    # Match Sigma id (if present)
+    sigma_id_pattern = re.compile(r"^id\s*:.*$", re.MULTILINE | re.IGNORECASE)
+    
     for rule in rule_list:
         if not rule or not isinstance(rule, str):
             continue
+            
+        # Strip variable fields for fingerprinting
+        normalized = rule
+        normalized = snort_sid_pattern.sub("", normalized)
+        normalized = sigma_title_pattern.sub("", normalized)
+        normalized = sigma_id_pattern.sub("", normalized)
+        
         # Normalize rule string (strip whitespace, lower case for fingerprinting)
-        normalized = " ".join(rule.strip().split())
+        normalized = " ".join(normalized.strip().split()).lower()
         fingerprint = hashlib.md5(normalized.encode("utf-8")).hexdigest()
+        
         if fingerprint not in seen_hashes:
             seen_hashes.add(fingerprint)
             deduped.append(rule)
+            
     return deduped
 
 
