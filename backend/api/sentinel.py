@@ -1795,78 +1795,57 @@ def export_all_rules(db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.get("/campaigns/{campaign_id}/timeline", response_model=Dict[str, Any])
-def get_campaign_timeline(campaign_id: str = Path(...), db: Session = Depends(get_db)):
+def get_campaign_timeline(
+    campaign_id: str = Path(...),
+    interval: str = Query("hourly", pattern="^(hourly|daily)$", description="Aggregation interval"),
+    db: Session = Depends(get_db)
+):
     """
     Retrieve time-series event density data for campaign timeline visualization.
     Includes attack spike detection and anomaly timestamps.
     """
-    try:
-        from database.models import PacketLog
-        logs = db.query(PacketLog).all()
+    from database.models import PacketLog
+    
+    playbook = db.query(SentinelPlaybook).filter(SentinelPlaybook.playbook_id == campaign_id).first()
+    if not playbook:
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
-        timeline_buckets = {}
-        for log in logs:
-            if getattr(log, "timestamp", None):
-                ts_str = log.timestamp.strftime("%Y-%m-%d %H:00")
-            else:
-                ts_str = "2026-08-08 10:00"
-            timeline_buckets[ts_str] = timeline_buckets.get(ts_str, 0) + 1
-
-        points = []
-        if timeline_buckets:
-            sorted_buckets = sorted(timeline_buckets.items())
-            counts = [v for _, v in sorted_buckets]
-            avg_count = sum(counts) / len(counts) if counts else 0
-            spike_threshold = max(avg_count * 1.5, 30)
-
-            for ts, count in sorted_buckets:
-                is_spike = count >= spike_threshold
-                is_anomaly = is_spike or (count > avg_count * 1.3)
-                anomaly_type = None
-                if is_spike:
-                    anomaly_type = "Attack Density Surge Peak"
-                elif is_anomaly:
-                    anomaly_type = "Elevated Traffic Anomaly"
-
-                points.append({
-                    "timestamp": ts,
-                    "count": count,
-                    "density": count,
-                    "is_spike": is_spike,
-                    "is_anomaly": is_anomaly,
-                    "anomaly_type": anomaly_type,
-                    "threat_level": "critical" if is_spike else ("high" if is_anomaly else "normal"),
-                })
+    dialect = db.bind.dialect.name if db.bind else "sqlite"
+    if dialect == "postgresql":
+        # PostgreSQL supports date_trunc
+        if interval == "daily":
+            date_expr = func.date_trunc('day', PacketLog.timestamp)
         else:
-            # Fallback time-series campaign progression data with spikes and anomalies
-            points = [
-                {"timestamp": "2026-08-08 04:00", "count": 14, "density": 14, "is_spike": False, "is_anomaly": False, "anomaly_type": None, "threat_level": "normal"},
-                {"timestamp": "2026-08-08 06:00", "count": 22, "density": 22, "is_spike": False, "is_anomaly": False, "anomaly_type": None, "threat_level": "normal"},
-                {"timestamp": "2026-08-08 08:00", "count": 68, "density": 68, "is_spike": True, "is_anomaly": True, "anomaly_type": "Initial Probe Spike", "threat_level": "critical"},
-                {"timestamp": "2026-08-08 10:00", "count": 45, "density": 45, "is_spike": False, "is_anomaly": True, "anomaly_type": "Elevated Reconnaissance", "threat_level": "high"},
-                {"timestamp": "2026-08-08 12:00", "count": 135, "density": 135, "is_spike": True, "is_anomaly": True, "anomaly_type": "SYN Flood Burst Peak", "threat_level": "critical"},
-                {"timestamp": "2026-08-08 14:00", "count": 82, "density": 82, "is_spike": False, "is_anomaly": True, "anomaly_type": "Brute Force Payload Burst", "threat_level": "high"},
-                {"timestamp": "2026-08-08 16:00", "count": 31, "density": 31, "is_spike": False, "is_anomaly": False, "anomaly_type": None, "threat_level": "medium"},
-                {"timestamp": "2026-08-08 18:00", "count": 94, "density": 94, "is_spike": True, "is_anomaly": True, "anomaly_type": "Secondary Exfiltration Spike", "threat_level": "critical"},
-                {"timestamp": "2026-08-08 20:00", "count": 26, "density": 26, "is_spike": False, "is_anomaly": False, "anomaly_type": None, "threat_level": "normal"},
-                {"timestamp": "2026-08-08 22:00", "count": 18, "density": 18, "is_spike": False, "is_anomaly": False, "anomaly_type": None, "threat_level": "normal"},
-            ]
+            date_expr = func.date_trunc('hour', PacketLog.timestamp)
+    else:
+        # SQLite uses strftime
+        if interval == "daily":
+            date_expr = func.strftime('%Y-%m-%d 00:00:00', PacketLog.timestamp)
+        else:
+            date_expr = func.strftime('%Y-%m-%d %H:00:00', PacketLog.timestamp)
 
-        spikes = [p for p in points if p["is_spike"]]
-        anomalies = [p for p in points if p["is_anomaly"]]
+    query = db.query(
+        date_expr.label("bucket"),
+        func.count(PacketLog.id).label("count")
+    ).filter(
+        PacketLog.src_ip == playbook.src_ip
+    )
 
-        return {
-            "status": "success",
-            "campaign_id": campaign_id,
-            "total_events": sum(p["count"] for p in points),
-            "peak_density": max((p["count"] for p in points), default=0),
-            "spike_count": len(spikes),
-            "anomaly_count": len(anomalies),
-            "timeline": points,
-        }
-    except Exception as exc:
-        logger.error("Failed to fetch campaign timeline for %s: %s", campaign_id, exc)
-        raise HTTPException(status_code=500, detail=f"Failed to fetch campaign timeline: {str(exc)}")
+    if playbook.dst_port:
+        query = query.filter(PacketLog.dst_port == playbook.dst_port)
+    if playbook.protocol:
+        query = query.filter(PacketLog.protocol == playbook.protocol)
+
+    results = query.group_by("bucket").order_by("bucket").all()
+    points = [{"timestamp": str(r.bucket), "count": r.count} for r in results if r.bucket]
+
+    return {
+        "status": "success",
+        "campaign_id": campaign_id,
+        "interval": interval,
+        "total_events": sum(p["count"] for p in points),
+        "timeline": points,
+    }
 
 
 # ---------------------------------------------------------------------------
