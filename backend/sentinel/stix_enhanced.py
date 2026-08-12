@@ -5,6 +5,7 @@ PhantomNet Sentinel Layer — Enriched STIX 2.1 Bundle Generator
 
 Produces standards-compliant STIX 2.1 bundles that combine:
   * MITRE ATT&CK ExternalReference-enriched AttackPattern objects
+  * CVE ExternalReference objects embedded in AttackPatterns (via cve_mapper)
   * Indicator objects derived from IOCs (IPs, domains, URLs, hashes)
   * Relationship objects that wire indicators → attack patterns
   * A PhantomNet Identity anchor object
@@ -181,7 +182,10 @@ def _validate_ioc(ioc: Dict[str, Any]) -> bool:
 # Public builder functions
 # ---------------------------------------------------------------------------
 
-def build_attack_pattern(technique: Dict[str, Any]) -> stix2.AttackPattern:
+def build_attack_pattern(
+    technique: Dict[str, Any],
+    cve_references: Optional[List[Dict[str, str]]] = None,
+) -> stix2.AttackPattern:
     """
     Build a MITRE ATT&CK-enriched STIX 2.1 AttackPattern object.
 
@@ -190,11 +194,18 @@ def build_attack_pattern(technique: Dict[str, Any]) -> stix2.AttackPattern:
                    or mitre_mapper.get_technique().  Required keys:
                    ``technique_id``, ``technique_name``, ``tactic``.
                    Optional: ``description``, ``url``, ``severity``.
+        cve_references: Optional list of CVE ExternalReference dicts as returned
+                        by ``cve_mapper.format_cve_references()``.  Each dict
+                        must have ``source_name``, ``external_id``, ``url``, and
+                        optionally ``description``.  These are appended to the
+                        AttackPattern's ``external_references`` after the
+                        primary ATT&CK reference.
 
     Returns:
         A ``stix2.AttackPattern`` with:
           - Deterministic STIX ID (reproducible across calls)
           - ATT&CK ExternalReference with technique ID and URL
+          - CVE ExternalReferences (one per matched CVE, if provided)
           - KillChainPhase for the MITRE kill chain
           - Created-by-ref pointing to PHANTOMNET_IDENTITY
 
@@ -203,12 +214,16 @@ def build_attack_pattern(technique: Dict[str, Any]) -> stix2.AttackPattern:
 
     Example:
         >>> from sentinel.mitre_mapper import map_signature
+        >>> from sentinel.cve_mapper import get_cve_mappings, format_cve_references
         >>> t = map_signature("SSH_AUTH_FAILURE")
-        >>> ap = build_attack_pattern(t)
+        >>> cves = format_cve_references(get_cve_mappings(attack_type="SSH_AUTH_FAILURE"))
+        >>> ap = build_attack_pattern(t, cve_references=cves)
         >>> ap.type
         'attack-pattern'
         >>> ap.external_references[0].external_id
         'T1110.001'
+        >>> any(r.source_name == 'cve' for r in ap.external_references)
+        True
     """
     technique_id = technique.get("technique_id") or technique.get("id")
     technique_name = technique.get("technique_name") or technique.get("name")
@@ -228,12 +243,32 @@ def build_attack_pattern(technique: Dict[str, Any]) -> stix2.AttackPattern:
         + "/"
     )
 
-    # Build the ATT&CK external reference (required for proper ATT&CK enrichment)
+    # ── Build the primary ATT&CK external reference ───────────────────────
     att_ck_ref = stix2.ExternalReference(
         source_name="mitre-attack",
         external_id=technique_id,
         url=url,
     )
+
+    # ── Build CVE ExternalReferences ──────────────────────────────────────
+    all_external_refs: List[stix2.ExternalReference] = [att_ck_ref]
+    if cve_references:
+        for cve_ref in cve_references:
+            cve_id = cve_ref.get("external_id") or cve_ref.get("cve_id") or ""
+            if not cve_id:
+                continue
+            cve_url = cve_ref.get("url") or f"https://nvd.nist.gov/vuln/detail/{cve_id}"
+            cve_desc = cve_ref.get("description") or ""
+            try:
+                stix_cve_ref = stix2.ExternalReference(
+                    source_name="cve",
+                    external_id=cve_id,
+                    url=cve_url,
+                    description=cve_desc,
+                )
+                all_external_refs.append(stix_cve_ref)
+            except Exception as exc:
+                logger.warning("Failed to build CVE ExternalReference for %s: %s", cve_id, exc)
 
     # Kill-chain phase derived from the tactic name
     kill_chain_phase = stix2.KillChainPhase(
@@ -251,7 +286,7 @@ def build_attack_pattern(technique: Dict[str, Any]) -> stix2.AttackPattern:
         name=technique_name,
         description=description,
         kill_chain_phases=[kill_chain_phase],
-        external_references=[att_ck_ref],
+        external_references=all_external_refs,
     )
 
 
@@ -368,13 +403,14 @@ def build_stix_bundle(
     threat_score: float = 0.0,
     tlp_level: str = "white",
     valid_from: Optional[datetime] = None,
+    cve_references: Optional[List[Dict[str, str]]] = None,
 ) -> stix2.Bundle:
     """
     Build a complete, enriched STIX 2.1 bundle from a technique + IOC list.
 
     This is the primary entry point for the Sentinel pipeline.  It:
       1. Resolves the TLP marking definition.
-      2. Builds an ATT&CK-enriched AttackPattern.
+      2. Builds an ATT&CK-enriched AttackPattern (with optional CVE refs).
       3. Automatically adds ``src_ip`` as an IP IOC if provided.
       4. Builds an Indicator for each valid IOC.
       5. Creates 'indicates' Relationship objects linking each Indicator
@@ -383,23 +419,27 @@ def build_stix_bundle(
          into a STIX Bundle.
 
     Args:
-        technique:    Technique dict from mitre_mapper.map_signature() or
-                      mitre_mapper.get_technique().
-        iocs:         List of IOC dicts ``{"type": str, "value": str}``.
-                      Supported types: ip, ipv4, ipv6, domain, url, md5,
-                      sha256, sha1, email.
-        src_ip:       Source IP from the detected event. Automatically
-                      added as an IP-type IOC if not already in ``iocs``.
-        threat_score: ML threat confidence score (0.0–100.0).
-        tlp_level:    TLP colour ("white", "green", "amber", "red").
-                      Default: "white".
-        valid_from:   Validity start for all Indicators. Defaults to now (UTC).
+        technique:      Technique dict from mitre_mapper.map_signature() or
+                        mitre_mapper.get_technique().
+        iocs:           List of IOC dicts ``{"type": str, "value": str}``.
+                        Supported types: ip, ipv4, ipv6, domain, url, md5,
+                        sha256, sha1, email.
+        src_ip:         Source IP from the detected event. Automatically
+                        added as an IP-type IOC if not already in ``iocs``.
+        threat_score:   ML threat confidence score (0.0–100.0).
+        tlp_level:      TLP colour ("white", "green", "amber", "red").
+                        Default: "white".
+        valid_from:     Validity start for all Indicators. Defaults to now (UTC).
+        cve_references: Optional list of CVE ExternalReference dicts produced by
+                        ``cve_mapper.format_cve_references()``.  When provided
+                        these are embedded inside the AttackPattern object's
+                        ``external_references`` list alongside the ATT&CK ref.
 
     Returns:
         A ``stix2.Bundle`` containing:
           - 1 × Identity  (PhantomNet Sentinel)
           - 1 × MarkingDefinition (TLP as specified)
-          - 1 × AttackPattern (enriched with ATT&CK ExternalReference)
+          - 1 × AttackPattern (enriched with ATT&CK + CVE ExternalReferences)
           - N × Indicator  (one per valid IOC)
           - N × Relationship (one 'indicates' link per Indicator)
 
@@ -408,10 +448,13 @@ def build_stix_bundle(
 
     Example:
         >>> from sentinel.mitre_mapper import map_signature
+        >>> from sentinel.cve_mapper import get_cve_mappings, format_cve_references
         >>> technique = map_signature("SSH_AUTH_FAILURE")
+        >>> cves = format_cve_references(get_cve_mappings(attack_type="SSH_AUTH_FAILURE"))
         >>> iocs = [{"type": "ip", "value": "10.0.0.5"}]
         >>> bundle = build_stix_bundle(technique, iocs, src_ip="10.0.0.5",
-        ...                           threat_score=87.5, tlp_level="green")
+        ...                           threat_score=87.5, tlp_level="green",
+        ...                           cve_references=cves)
         >>> bundle.type
         'bundle'
         >>> len(bundle.objects) >= 4
@@ -424,8 +467,8 @@ def build_stix_bundle(
         logger.warning("Unknown TLP level %r — defaulting to TLP:WHITE", tlp_level)
         tlp_marking = stix2.TLP_WHITE
 
-    # ── 2. Build ATT&CK-enriched AttackPattern ─────────────────────────────
-    attack_pattern = build_attack_pattern(technique)
+    # ── 2. Build ATT&CK-enriched AttackPattern (with CVE refs if provided) ─
+    attack_pattern = build_attack_pattern(technique, cve_references=cve_references)
 
     # ── 3. Normalise IOC list; inject src_ip if provided ──────────────────
     ioc_list: List[Dict[str, Any]] = list(iocs) if iocs else []
