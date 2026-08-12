@@ -1795,7 +1795,11 @@ def export_all_rules(db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.get("/campaigns/{campaign_id}/timeline", response_model=Dict[str, Any])
-def get_campaign_timeline(campaign_id: str = Path(...), db: Session = Depends(get_db)):
+def get_campaign_timeline(
+    campaign_id: str = Path(...),
+    interval: str = Query("hourly", pattern="^(hourly|daily)$", description="Aggregation interval"),
+    db: Session = Depends(get_db)
+):
     """
     Retrieve time-series event density data for campaign timeline visualization.
     Includes attack spike detection and anomaly timestamps.
