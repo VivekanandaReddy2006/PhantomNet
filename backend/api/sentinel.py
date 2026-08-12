@@ -1795,30 +1795,53 @@ def export_all_rules(db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.get("/campaigns/{campaign_id}/timeline", response_model=Dict[str, Any])
-def get_campaign_timeline(campaign_id: str = Path(...), db: Session = Depends(get_db)):
+def get_campaign_timeline(
+    campaign_id: str = Path(...),
+    interval: str = Query("hourly", pattern="^(hourly|daily)$", description="Aggregation interval"),
+    db: Session = Depends(get_db)
+):
     """
     Retrieve time-series event density data for campaign timeline visualization.
     """
     from database.models import PacketLog
-    logs = db.query(PacketLog).all()
     
-    # Bucket by timestamp hour or date
-    timeline_buckets = {}
-    for log in logs:
-        ts_str = log.timestamp.strftime("%Y-%m-%d %H:00") if getattr(log, "timestamp", None) else "2026-08-08 10:00"
-        timeline_buckets[ts_str] = timeline_buckets.get(ts_str, 0) + 1
+    playbook = db.query(SentinelPlaybook).filter(SentinelPlaybook.playbook_id == campaign_id).first()
+    if not playbook:
+        raise HTTPException(status_code=404, detail="Campaign not found")
 
-    points = [{"timestamp": k, "count": v} for k, v in sorted(timeline_buckets.items())]
-    if not points:
-        points = [
-            {"timestamp": "2026-08-08 08:00", "count": 12},
-            {"timestamp": "2026-08-08 09:00", "count": 45},
-            {"timestamp": "2026-08-08 10:00", "count": 28},
-        ]
+    dialect = db.bind.dialect.name if db.bind else "sqlite"
+    if dialect == "postgresql":
+        # PostgreSQL supports date_trunc
+        if interval == "daily":
+            date_expr = func.date_trunc('day', PacketLog.timestamp)
+        else:
+            date_expr = func.date_trunc('hour', PacketLog.timestamp)
+    else:
+        # SQLite uses strftime
+        if interval == "daily":
+            date_expr = func.strftime('%Y-%m-%d 00:00:00', PacketLog.timestamp)
+        else:
+            date_expr = func.strftime('%Y-%m-%d %H:00:00', PacketLog.timestamp)
+
+    query = db.query(
+        date_expr.label("bucket"),
+        func.count(PacketLog.id).label("count")
+    ).filter(
+        PacketLog.src_ip == playbook.src_ip
+    )
+
+    if playbook.dst_port:
+        query = query.filter(PacketLog.dst_port == playbook.dst_port)
+    if playbook.protocol:
+        query = query.filter(PacketLog.protocol == playbook.protocol)
+
+    results = query.group_by("bucket").order_by("bucket").all()
+    points = [{"timestamp": str(r.bucket), "count": r.count} for r in results if r.bucket]
 
     return {
         "status": "success",
         "campaign_id": campaign_id,
+        "interval": interval,
         "total_events": sum(p["count"] for p in points),
         "timeline": points,
     }
