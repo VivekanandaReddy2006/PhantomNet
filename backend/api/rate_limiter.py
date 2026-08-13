@@ -46,3 +46,32 @@ def check_rate_limit(request: Request, max_requests: int = MAX_GENERATIONS_PER_H
 def reset_rate_limits() -> None:
     """Utility to clear rate limit cache (for unit testing)."""
     _REQUEST_HISTORY.clear()
+
+
+def get_rate_limit_status() -> dict:
+    """
+    Helper function to get current rate limit usage stats for health endpoints.
+    Returns tracking info for all active IPs.
+    """
+    now = datetime.utcnow()
+    cutoff = now - timedelta(seconds=WINDOW_SECONDS)
+    
+    active_limits = {}
+    for ip, history in list(_REQUEST_HISTORY.items()):
+        # Filter active requests
+        active = [ts for ts in history if ts > cutoff]
+        if not active:
+            # Clean up empty history from our active checks (though we don't delete from dict yet)
+            continue
+            
+        reset_in = int((active[0] + timedelta(seconds=WINDOW_SECONDS) - now).total_seconds())
+        active_limits[ip] = {
+            "count": len(active),
+            "limit": MAX_GENERATIONS_PER_HOUR,
+            "reset_in_seconds": max(0, reset_in)
+        }
+        
+    return {
+        "active_ips_tracked": len(active_limits),
+        "limits": active_limits
+    }

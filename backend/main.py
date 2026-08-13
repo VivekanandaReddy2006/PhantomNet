@@ -95,6 +95,7 @@ from api.cases import router as cases_router
 from api.alerts import router as alerts_router
 from api.honeypots import get_honeypot_status, router as honeypots_router
 from api.taxii import router as taxii_router, TaxiiContentNegotiationMiddleware
+from api.rate_limiter import get_rate_limit_status
 
 # =========================
 # ENVIRONMENT SETUP
@@ -544,7 +545,11 @@ def health_check() -> dict:
     """
     Check the health of the API.
     """
-    return {"status": "online", "timestamp": datetime.utcnow().isoformat()}
+    return {
+        "status": "online", 
+        "timestamp": datetime.utcnow().isoformat(),
+        "rate_limits": get_rate_limit_status()
+    }
 
 
 # =========================

@@ -63,6 +63,7 @@ from sentinel.sentinel_service import SentinelService
 from middleware.auth import get_current_user, require_role
 from database.models import User
 from middleware.rate_limit import rate_limit_dependency
+from api.rate_limiter import check_rate_limit
 
 logger = logging.getLogger("api.sentinel")
 
@@ -641,6 +642,7 @@ def get_mitre_mappings() -> Dict[str, Any]:
     response_model=GenerateResponse,
     summary="Manual Playbook Generation",
     description="Trigger manual playbook generation for a campaign (Auto-gen).",
+    dependencies=[Depends(check_rate_limit)],
 )
 def generate_playbook(
     request: GenerateRequest,
@@ -1431,7 +1433,11 @@ async def get_llm_status() -> Dict[str, Any]:
 # 12. POST /api/sentinel/playbooks/{playbook_id}/regenerate-llm — Regenerate summary
 # ---------------------------------------------------------------------------
 
-@router.post("/playbooks/{playbook_id}/regenerate-llm", response_model=Dict[str, Any])
+@router.post(
+    "/playbooks/{playbook_id}/regenerate-llm",
+    response_model=Dict[str, Any],
+    dependencies=[Depends(check_rate_limit)]
+)
 async def regenerate_playbook_llm(
     playbook_id: int = Path(..., ge=1, description="Database ID of the playbook"),
     db: Session = Depends(get_db)
