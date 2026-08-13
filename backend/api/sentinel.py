@@ -2065,10 +2065,10 @@ def get_playbook_export_history(
 
 
 # ---------------------------------------------------------------------------
-# 22. GET & POST /api/sentinel/templates — Template inspection and live preview
+# 22. GET & POST /api/v1/sentinel/templates — Template inspection and live preview
 # ---------------------------------------------------------------------------
 
-@router.get("/templates", response_model=Dict[str, Any])
+@v1_router.get("/templates", response_model=Dict[str, Any])
 def list_sentinel_templates():
     """
     List available Jinja2 playbook templates.
@@ -2079,26 +2079,56 @@ def list_sentinel_templates():
     return {"status": "success", "templates": templates}
 
 
-@router.post("/templates/preview", response_model=Dict[str, Any])
+@v1_router.post("/templates/preview", response_model=Dict[str, Any])
 def preview_sentinel_template(payload: Dict[str, Any]):
     """
     Render a Jinja2 template with sample parameters for testing.
+    Supports both saved templates (via template_name) and inline Jinja2 syntax testing (via template_content).
     """
+    from sentinel.playbook_generator import PlaybookGenerator
+    from jinja2.exceptions import TemplateSyntaxError, TemplateError
+    
     template_name = payload.get("template_name", "brute_force")
+    template_content = payload.get("template_content")
     context = payload.get("context", {})
     context["attack_pattern"] = template_name
+    
     if "src_ip" not in context:
         context["src_ip"] = "192.168.1.100"
     if "dst_port" not in context:
         context["dst_port"] = 22
 
-    from sentinel.playbook_generator import PlaybookGenerator
     gen = PlaybookGenerator()
-    rendered = gen.generate(context_data=context, format="markdown")
+    validation_status = "valid"
+    rendered = ""
+    error_message = None
+
+    try:
+        if template_content:
+            # Inline testing of Jinja2 syntax
+            template = gen.env.from_string(template_content)
+            
+            # Use the generator's context enrichment
+            canonical = gen._resolve_canonical_pattern(template_name)
+            render_ctx = gen._build_enriched_context(context, canonical)
+            
+            rendered = template.render(**render_ctx)
+        else:
+            rendered = gen.generate(context_data=context, format="markdown")
+            
+    except (TemplateSyntaxError, TemplateError) as e:
+        validation_status = "invalid"
+        error_message = str(e)
+    except Exception as e:
+        validation_status = "error"
+        error_message = str(e)
+
     return {
         "status": "success",
         "template_name": template_name,
+        "validation_status": validation_status,
         "rendered_content": rendered,
+        "error_message": error_message,
     }
 
 
