@@ -155,3 +155,20 @@ SENTINEL_DASHBOARD_BASE_URL: str = os.getenv(
     "SENTINEL_DASHBOARD_BASE_URL", "http://localhost:3000"
 )
 """Base URL for constructing dashboard deep links in alert emails."""
+
+# ---------------------------------------------------------------------------
+# Sentinel Lifecycle Retention Configuration
+# ---------------------------------------------------------------------------
+
+SENTINEL_RETENTION_CLEANUP_ENABLED: bool = _env_bool("SENTINEL_RETENTION_CLEANUP_ENABLED", default=False)
+"""Enable background cleanup of rejected and archived playbooks."""
+
+SENTINEL_RETENTION_CLEANUP_INTERVAL_HOURS: int = _env_int("SENTINEL_RETENTION_CLEANUP_INTERVAL_HOURS", default=24)
+"""Interval in hours to run the cleanup job."""
+
+SENTINEL_RETENTION_REJECTED_DAYS: int = _env_int("SENTINEL_RETENTION_REJECTED_DAYS", default=30)
+"""Days to keep rejected playbooks before purging."""
+
+SENTINEL_RETENTION_ARCHIVED_DAYS: int = _env_int("SENTINEL_RETENTION_ARCHIVED_DAYS", default=90)
+"""Days to keep old non-latest superseded versions before purging."""
+
