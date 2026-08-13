@@ -131,14 +131,18 @@ body[data-theme="light"] .technique-detail-header {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
   display: flex;
   justify-content: center;
   align-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .technique-detail-close-btn:hover {
@@ -216,6 +220,7 @@ body[data-theme="light"] .technique-detail-header {
   border: 1px solid rgba(139, 92, 246, 0.3);
   color: #c084fc;
   padding: 0.75rem 1.25rem;
+  min-height: 44px;
   border-radius: 8px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8rem;
@@ -224,6 +229,8 @@ body[data-theme="light"] .technique-detail-header {
   cursor: pointer;
   transition: all 0.25s ease;
   width: 100%;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .tech-detail-link-btn:hover {
@@ -400,8 +407,34 @@ body[data-theme="light"] .technique-detail-header {
 }
 
 /* Responsive adjustments */
+@media (max-width: 1024px) {
+  .technique-detail-panel {
+    max-width: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .technique-detail-panel {
+    max-width: 440px;
+  }
+
+  .technique-detail-header {
+    padding: 1.25rem 1rem;
+  }
+
+  .technique-detail-body {
+    padding: 1.25rem 1rem;
+    gap: 1.25rem;
+  }
+}
+
 @media (max-width: 640px) {
   .technique-detail-panel {
     max-width: 100%;
   }
+
+  .tech-metrics-grid {
+    grid-template-columns: 1fr;
+  }
 }
+

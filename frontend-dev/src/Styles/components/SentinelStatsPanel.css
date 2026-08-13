@@ -15,15 +15,23 @@
   margin-bottom: 24px;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1280px) {
+  .sentinel-stats-grid {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 1024px) {
   .sentinel-stats-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 }
 
 @media (max-width: 640px) {
   .sentinel-stats-grid {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 
@@ -36,6 +44,8 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body[data-theme="dark"] .sentinel-stat-card {

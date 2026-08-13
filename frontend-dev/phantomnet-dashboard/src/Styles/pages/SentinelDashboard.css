@@ -974,7 +974,8 @@ body[data-theme="light"] .sentinel-nav-tabs {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 0.75rem 1.5rem;
+    padding: 0.65rem 1.25rem;
+    min-height: 44px;
     background: transparent;
     border: 1px solid transparent;
     border-radius: 8px;
@@ -984,6 +985,8 @@ body[data-theme="light"] .sentinel-nav-tabs {
     display: flex;
     align-items: center;
     gap: 0.65rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .nav-tab-btn:hover {
@@ -1188,35 +1191,101 @@ body[data-theme="light"] .sentinel-filters-toolbar option {
     color: #334155;
 }
 
-/* Responsive adjustment */
+/* ==========================================
+   RESPONSIVE BREAKPOINTS (1280px, 1024px, 768px, 480px)
+   ========================================== */
+
+@media (max-width: 1280px) {
+    .sentinel-title {
+        font-size: 2.15rem;
+    }
+
+    .sentinel-playbook-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
+
+@media (max-width: 1024px) {
+    .sentinel-wrapper {
+        padding: 1.5rem;
+    }
+
+    .sentinel-header {
+        margin-bottom: 2rem;
+    }
+
+    .sentinel-title {
+        font-size: 1.95rem;
+    }
+
+    .sentinel-status-bar {
+        gap: 1rem 1.5rem;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .sentinel-nav-tabs {
+        gap: 0.75rem;
+    }
+
+    .nav-tab-btn {
+        padding: 0.6rem 1.15rem;
+        font-size: 0.8rem;
+    }
+
+    .sentinel-playbook-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
+    .sentinel-wrapper {
+        padding: 1.25rem;
+    }
+
+    .sentinel-header {
+        padding-left: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .sentinel-title {
+        font-size: 1.75rem;
+    }
+
+    .sentinel-status-bar {
+        gap: 0.85rem 1.25rem;
+        padding: 0.75rem 1rem;
+    }
+
+    .status-item {
+        font-size: 0.75rem;
+    }
+
     .sentinel-filters-toolbar {
         flex-direction: column;
         align-items: stretch;
         gap: 1rem;
     }
+
     .sentinel-filters-toolbar .search-group {
         width: 100%;
         min-width: unset;
     }
+
     .sentinel-filters-toolbar .filter-group {
         justify-content: space-between;
     }
+
     .sentinel-filters-toolbar .hud-filter-select {
         flex: 1;
         max-width: unset;
     }
-}
 
-/* Status Bar & General Layout Mobile Adjustments */
-@media (max-width: 768px) {
-    .sentinel-status-bar {
-        gap: 1rem 1.5rem;
-        padding: 0.75rem 1rem;
-    }
-    
-    .status-item {
-        font-size: 0.75rem;
+    .sentinel-pagination-container {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: center;
+        text-align: center;
     }
 }
 
@@ -1224,21 +1293,31 @@ body[data-theme="light"] .sentinel-filters-toolbar option {
     .sentinel-wrapper {
         padding: 1rem;
     }
+
     .sentinel-header {
         padding-left: 1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
+
     .sentinel-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
     }
+
     .sentinel-status-bar {
         gap: 0.75rem 1rem;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
+
     .nav-tab-btn {
-        padding: 0.5rem 1rem;
+        padding: 0.65rem 1rem;
         font-size: 0.75rem;
         width: 100%;
         justify-content: center;
+        min-height: 44px;
+    }
+
+    .sentinel-playbook-grid {
+        grid-template-columns: 1fr;
     }
 }
+

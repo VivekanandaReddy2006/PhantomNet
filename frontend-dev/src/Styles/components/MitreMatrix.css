@@ -13,22 +13,27 @@
     overflow-x: auto;
     box-shadow: var(--shadow-card);
     transition: all 0.3s ease;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-bright, rgba(139, 92, 246, 0.3)) rgba(15, 23, 42, 0.2);
+    -webkit-overflow-scrolling: touch;
 }
 
 body[data-theme="light"] .mitre-matrix-container {
     background: var(--bg-hud);
     border-color: var(--border-hud);
     box-shadow: var(--shadow-card);
+    scrollbar-color: rgba(139, 92, 246, 0.3) rgba(0, 0, 0, 0.05);
 }
 
 /* Custom Scrollbars for the Matrix */
 .mitre-matrix-container::-webkit-scrollbar {
-    height: 8px;
+    height: 10px;
+    width: 10px;
 }
 
 .mitre-matrix-container::-webkit-scrollbar-track {
-    background: rgba(15, 23, 42, 0.2);
-    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 6px;
 }
 
 body[data-theme="light"] .mitre-matrix-container::-webkit-scrollbar-track {
@@ -36,19 +41,20 @@ body[data-theme="light"] .mitre-matrix-container::-webkit-scrollbar-track {
 }
 
 .mitre-matrix-container::-webkit-scrollbar-thumb {
-    background: var(--border-hud);
-    border-radius: 4px;
+    background: rgba(139, 92, 246, 0.35);
+    border-radius: 6px;
+    border: 2px solid rgba(15, 23, 42, 0.4);
 }
 
 .mitre-matrix-container::-webkit-scrollbar-thumb:hover {
-    background: var(--border-bright);
+    background: rgba(139, 92, 246, 0.6);
 }
 
 .mitre-matrix-grid {
     display: grid;
-    grid-template-columns: repeat(12, minmax(150px, 1fr));
+    grid-template-columns: repeat(12, minmax(140px, 1fr));
     gap: 0.75rem;
-    min-width: 1800px; /* Ensures all 12 columns are displayed side-by-side without squeezing */
+    min-width: 1720px;
 }
 
 /* Tactic Column */
@@ -203,6 +209,8 @@ body[data-theme="light"] .technique-placeholder {
     cursor: pointer;
     overflow: visible;
     user-select: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body[data-theme="light"] .technique-cell {
@@ -562,3 +570,123 @@ body[data-theme="light"] .technique-cell.heat-high .technique-id {
 .tech-tooltip-stat strong {
     color: #cbd5e1;
 }
+
+/* ==========================================
+   RESPONSIVE BREAKPOINTS (1280px, 1024px, 768px, 480px)
+   ========================================== */
+
+@media (max-width: 1280px) {
+    .mitre-matrix-grid {
+        grid-template-columns: repeat(12, minmax(130px, 1fr));
+        gap: 0.6rem;
+        min-width: 1600px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .mitre-matrix-container {
+        padding: 1.25rem;
+    }
+
+    .mitre-matrix-grid {
+        grid-template-columns: repeat(12, minmax(120px, 1fr));
+        gap: 0.5rem;
+        min-width: 1480px;
+    }
+
+    .tactic-header {
+        min-height: 72px;
+        padding: 0.65rem 0.4rem;
+    }
+
+    .tactic-title {
+        font-size: 0.7rem;
+    }
+
+    .tactic-count-badge {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.35rem;
+    }
+
+    .technique-cell {
+        min-height: 52px;
+        padding: 0.45rem 0.5rem;
+    }
+
+    .technique-id {
+        font-size: 0.65rem;
+    }
+
+    .technique-name {
+        font-size: 0.6rem;
+        -webkit-line-clamp: 2;
+    }
+
+    .heat-count-chip {
+        font-size: 0.55rem;
+        padding: 0.1rem 0.3rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .mitre-matrix-container {
+        padding: 1rem;
+        border-radius: 10px;
+    }
+
+    .mitre-matrix-grid {
+        grid-template-columns: repeat(12, minmax(110px, 1fr));
+        gap: 0.45rem;
+        min-width: 1340px;
+    }
+
+    .tactic-header {
+        min-height: 64px;
+        padding: 0.5rem 0.35rem;
+    }
+
+    .tactic-title {
+        font-size: 0.65rem;
+        letter-spacing: 0.03em;
+    }
+
+    .tactic-count-badge {
+        font-size: 0.55rem;
+    }
+
+    .technique-cell {
+        min-height: 48px;
+        padding: 0.35rem 0.45rem;
+    }
+
+    .technique-id {
+        font-size: 0.6rem;
+    }
+
+    .technique-name {
+        font-size: 0.55rem;
+    }
+
+    .heat-count-chip {
+        font-size: 0.5rem;
+        padding: 0.08rem 0.25rem;
+    }
+
+    .technique-tooltip {
+        max-width: 250px;
+        padding: 0.65rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .mitre-matrix-container {
+        padding: 0.75rem 0.5rem;
+    }
+
+    .mitre-matrix-grid {
+        grid-template-columns: repeat(12, minmax(105px, 1fr));
+        gap: 0.35rem;
+        min-width: 1280px;
+    }
+}
+

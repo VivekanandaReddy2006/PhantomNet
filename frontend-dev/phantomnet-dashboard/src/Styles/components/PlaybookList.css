@@ -245,16 +245,25 @@ body[data-theme="light"] .toolbar-selected-count {
 .toolbar-btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.1rem;
+    min-height: 44px;
     border-radius: 8px;
     cursor: pointer;
     font-family: 'JetBrains Mono', monospace;
     text-transform: uppercase;
     outline: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:active {
+    transform: scale(0.97);
 }
 
 .toolbar-btn:focus-visible {

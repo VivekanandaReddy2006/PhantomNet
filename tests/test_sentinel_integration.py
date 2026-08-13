@@ -123,8 +123,11 @@ def cleanup_test_db():
 def setup_test_db_infrastructure():
     """Ensure database has all schemas created on startup."""
     cleanup_test_db()
+    try:
+        Base.metadata.drop_all(bind=database.database.engine)
+    except Exception:
+        pass
     Base.metadata.create_all(bind=database.database.engine)
-    SentinelPlaybook.__table__.create(bind=database.database.engine, checkfirst=True)
     yield
     cleanup_test_db()
 
