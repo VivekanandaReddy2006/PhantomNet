@@ -6,7 +6,8 @@ import {
   FaTimes, 
   FaUser, 
   FaExclamationTriangle, 
-  FaSpinner 
+  FaSpinner,
+  FaExchangeAlt,
 } from "react-icons/fa";
 import "../../Styles/components/PlaybookList.css";
 
@@ -43,11 +44,12 @@ const getNormalizedStatus = (status) => {
 /**
  * PlaybookList - Manages multi-selection states of playbooks,
  * renders the header checkbox toggle, and displays a floating
- * action toolbar for batch approvals and rejections.
+ * action toolbar for batch approvals, rejections, and side-by-side comparison.
  */
 const PlaybookList = ({
   playbooks = [],
   onPlaybookClick,
+  onCompare,
   refreshData,
   addToast,
 }) => {
@@ -226,6 +228,20 @@ const PlaybookList = ({
               <span className="count-number">{selectedIds.length}</span> PLAYBOOKS SELECTED
             </span>
             <div className="toolbar-actions">
+              {selectedIds.length === 2 && (
+                <button
+                  className="toolbar-btn btn-batch-compare"
+                  onClick={() => onCompare && onCompare(selectedIds[0], selectedIds[1])}
+                  style={{
+                    backgroundColor: "rgba(56, 189, 248, 0.2)",
+                    borderColor: "rgba(56, 189, 248, 0.6)",
+                    color: "#38bdf8",
+                  }}
+                >
+                  <FaExchangeAlt className="btn-icon" />
+                  Compare Playbooks (2)
+                </button>
+              )}
               <button 
                 className="toolbar-btn btn-batch-approve"
                 onClick={() => setConfirmAction("approve")}
@@ -329,6 +345,7 @@ const PlaybookList = ({
 PlaybookList.propTypes = {
   playbooks: PropTypes.array,
   onPlaybookClick: PropTypes.func,
+  onCompare: PropTypes.func,
   refreshData: PropTypes.func,
   addToast: PropTypes.func,
 };

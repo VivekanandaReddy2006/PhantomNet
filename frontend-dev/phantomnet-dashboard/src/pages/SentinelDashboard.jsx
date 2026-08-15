@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter, FaSearch } from "react-icons/fa";
+import { FaShieldAlt, FaTerminal, FaSortAmountDown, FaSortAmountUp, FaPlus, FaSync, FaExternalLinkAlt, FaTimes, FaFilter, FaSearch, FaChartLine, FaHistory, FaExchangeAlt } from "react-icons/fa";
 import PlaybookList from "../components/sentinel/PlaybookList";
 import SentinelStatsPanel from "../components/sentinel/SentinelStatsPanel";
 import MitreTag from "../components/sentinel/MitreTag";
@@ -7,6 +7,9 @@ import MitreMatrix from "../components/sentinel/MitreMatrix";
 import RulePreview from "../components/sentinel/RulePreview";
 import PlaybookViewer from "../components/sentinel/PlaybookViewer";
 import TechniqueDetailPanel from "../components/sentinel/TechniqueDetailPanel";
+import PlaybookCompareModal from "../components/sentinel/PlaybookCompareModal";
+import CampaignTimelineChart from "../components/sentinel/CampaignTimelineChart";
+import ExportHistoryPanel from "../components/sentinel/ExportHistoryPanel";
 import ToastContainer, { useToast } from "../components/ui/ToastNotification";
 import "../Styles/pages/SentinelDashboard.css";
 
@@ -108,10 +111,19 @@ const SentinelDashboard = () => {
   const [aiStatus, setAiStatus] = useState("checking");
 
   /* ── Navigation Tab State ── */
-  const [dashboardTab, setDashboardTab] = useState("playbooks"); // "playbooks" or "mitre"
+  const [dashboardTab, setDashboardTab] = useState("playbooks"); // "playbooks" | "mitre" | "timeline" | "exports"
   const [matrixData, setMatrixData] = useState(null);
   const [matrixLoading, setMatrixLoading] = useState(true);
   const [matrixError, setMatrixError] = useState(null);
+
+  /* ── Compare Modal State ── */
+  const [compareModalState, setCompareModalState] = useState({
+    isOpen: false,
+    id1: null,
+    id2: null,
+    pb1: null,
+    pb2: null,
+  });
 
   // Mapped technique details resolver
   const selectedTechniqueDetails = useMemo(() => {
@@ -599,9 +611,23 @@ const SentinelDashboard = () => {
           <FaTerminal className="nav-tab-icon" />
           ATT&amp;CK Coverage
         </button>
+        <button
+          className={`nav-tab-btn ${dashboardTab === "timeline" ? "active" : ""}`}
+          onClick={() => setDashboardTab("timeline")}
+        >
+          <FaChartLine className="nav-tab-icon" />
+          Campaign Timeline
+        </button>
+        <button
+          className={`nav-tab-btn ${dashboardTab === "exports" ? "active" : ""}`}
+          onClick={() => setDashboardTab("exports")}
+        >
+          <FaHistory className="nav-tab-icon" />
+          Export History Logs
+        </button>
       </div>
 
-      {dashboardTab === "playbooks" ? (
+      {dashboardTab === "playbooks" && (
         <>
           {/* Playbook Metrics & Analytics */}
           <SentinelStatsPanel stats={stats} loading={loading} />
@@ -859,6 +885,17 @@ const SentinelDashboard = () => {
               <PlaybookList
                 playbooks={sortedPlaybooks}
                 onPlaybookClick={handleCardClick}
+                onCompare={(id1, id2) => {
+                  const pb1 = playbooks.find((p) => p.id === id1);
+                  const pb2 = playbooks.find((p) => p.id === id2);
+                  setCompareModalState({
+                    isOpen: true,
+                    id1,
+                    id2,
+                    pb1,
+                    pb2,
+                  });
+                }}
                 refreshData={() => fetchData(currentPage, perPage, activeTab)}
                 addToast={addToast}
               />
@@ -934,8 +971,10 @@ const SentinelDashboard = () => {
             )}
           </div>
         </>
-      ) : (
-        /* ATT&CK Coverage Matrix Tab */
+      )}
+
+      {/* ATT&CK Coverage Matrix Tab */}
+      {dashboardTab === "mitre" && (
         <div className="sentinel-content">
           <div className="sentinel-section-header" style={{ marginBottom: "1.5rem" }}>
             <h2 className="sentinel-section-title">MITRE ATT&amp;CK Matrix Heatmap</h2>
@@ -980,16 +1019,57 @@ const SentinelDashboard = () => {
               </button>
             </div>
           ) : (
-            /* MitreMatrix Heatmap Component */
-            <MitreMatrix
-              techniqueFrequencies={matrixData}
-              techniquesData={matrixData}
-              selectedTechniqueId={selectedMatrixTechnique?.id || null}
-              onTechniqueClick={handleTechniqueClick}
-            />
-          )}
+              /* MitreMatrix Heatmap Component */
+              <MitreMatrix
+                techniqueFrequencies={matrixData}
+                techniquesData={matrixData}
+                selectedTechniqueId={selectedMatrixTechnique?.id || null}
+                onTechniqueClick={handleTechniqueClick}
+              />
+            )}
+          </div>
+      )}
+
+      {/* Campaign Timeline View */}
+      {dashboardTab === "timeline" && (
+        <div className="sentinel-content">
+          <div className="sentinel-section-header">
+            <h2 className="sentinel-section-title">Attack Density &amp; Anomaly Timeline</h2>
+            <span className="sentinel-section-count hud-font">INTERACTIVE RECHARTS</span>
+          </div>
+          <CampaignTimelineChart campaignId="SENTINEL-CAMP-2026" />
         </div>
       )}
+
+      {/* Export History Drawer View */}
+      {dashboardTab === "exports" && (
+        <div className="sentinel-content">
+          <div className="sentinel-section-header">
+            <h2 className="sentinel-section-title">Playbook Export Audit Trail &amp; History</h2>
+            <span className="sentinel-section-count hud-font">DOWNLOAD LOGS</span>
+          </div>
+          <ExportHistoryPanel />
+        </div>
+      )}
+
+      {/* Compare Playbooks Modal */}
+      <PlaybookCompareModal
+        isOpen={compareModalState.isOpen}
+        onClose={() => setCompareModalState({ isOpen: false, id1: null, id2: null, pb1: null, pb2: null })}
+        id1={compareModalState.id1}
+        id2={compareModalState.id2}
+        playbook1={compareModalState.pb1}
+        playbook2={compareModalState.pb2}
+        onApprove={async (id) => {
+          handleStatusChange(id, "approved");
+          addToast({
+            type: "success",
+            title: "Playbook Approved",
+            message: `Playbook #${id} approved from comparison view.`,
+          });
+        }}
+        addToast={addToast}
+      />
 
       {/* Playbook Viewer Modal */}
       {selectedPlaybook && (

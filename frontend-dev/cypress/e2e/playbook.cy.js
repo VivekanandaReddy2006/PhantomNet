@@ -265,4 +265,48 @@ describe('Sentinel V3 Playbook Workflows', () => {
     cy.get('.pbv-download-btn').contains('STIX Bundle').click({ force: true });
     cy.get('@anchorClick').should('have.been.called');
   });
+
+  it('should select 2 playbooks and open Compare Modal with diff highlights', () => {
+    cy.visit('/sentinel');
+    cy.wait('@getPlaybooks');
+
+    // Check first 2 playbooks
+    cy.get('.playbook-card-checkbox').eq(0).check({ force: true });
+    cy.get('.playbook-card-checkbox').eq(1).check({ force: true });
+
+    // Floating toolbar Compare button
+    cy.get('.btn-batch-compare').should('be.visible').and('contain', 'Compare Playbooks (2)');
+    cy.get('.btn-batch-compare').click({ force: true });
+
+    // Compare modal should render
+    cy.get('.pcm-card').should('be.visible');
+    cy.get('#compare-modal-title').should('contain', 'Playbook Comparison & Diff Analysis');
+
+    // Tab switching
+    cy.get('.pcm-tab-btn').contains('Snort Rules Diff').click({ force: true });
+    cy.get('.pcm-code-diff-content').should('be.visible');
+
+    cy.get('.pcm-tab-btn').contains('Sigma Rules Diff').click({ force: true });
+    cy.get('.pcm-code-diff-content').should('be.visible');
+
+    cy.get('.pcm-tab-btn').contains('CVE Mappings').click({ force: true });
+    cy.get('.pcm-cve-content').should('be.visible');
+
+    // Close modal
+    cy.get('.pcm-close-btn').click({ force: true });
+    cy.get('.pcm-card').should('not.exist');
+  });
+
+  it('should navigate to Campaign Timeline and Export History navigation tabs', () => {
+    cy.visit('/sentinel');
+    cy.wait('@getPlaybooks');
+
+    // Click Campaign Timeline tab
+    cy.get('.nav-tab-btn').contains('Campaign Timeline').click({ force: true });
+    cy.get('.sentinel-section-title').should('contain', 'Attack Density & Anomaly Timeline');
+
+    // Click Export History Logs tab
+    cy.get('.nav-tab-btn').contains('Export History Logs').click({ force: true });
+    cy.get('.sentinel-section-title').should('contain', 'Playbook Export Audit Trail & History');
+  });
 });
