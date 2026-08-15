@@ -52,8 +52,9 @@ def test_build_webhook_payload_fallback_summary():
     payload = notifier.build_webhook_payload(playbook)
     assert payload["summary"] == "Fallback content"
 
+@patch('backend.sentinel.webhook_notifier.SentinelWebhookNotifier.validate_webhook_url')
 @patch('backend.sentinel.webhook_notifier.requests.post')
-def test_send_with_retry_success(mock_post):
+def test_send_with_retry_success(mock_post, mock_validate):
     notifier = SentinelWebhookNotifier()
     
     # Mock a successful response
@@ -73,9 +74,10 @@ def test_send_with_retry_success(mock_post):
         timeout=10
     )
 
+@patch('backend.sentinel.webhook_notifier.SentinelWebhookNotifier.validate_webhook_url')
 @patch('backend.sentinel.webhook_notifier.time.sleep')
 @patch('backend.sentinel.webhook_notifier.requests.post')
-def test_send_with_retry_failure_then_success(mock_post, mock_sleep):
+def test_send_with_retry_failure_then_success(mock_post, mock_sleep, mock_validate):
     notifier = SentinelWebhookNotifier()
     
     import requests
@@ -92,9 +94,10 @@ def test_send_with_retry_failure_then_success(mock_post, mock_sleep):
     assert mock_post.call_count == 2
     mock_sleep.assert_called_once_with(2)  # 2^1 sleep on first failure
 
+@patch('backend.sentinel.webhook_notifier.SentinelWebhookNotifier.validate_webhook_url')
 @patch('backend.sentinel.webhook_notifier.time.sleep')
 @patch('backend.sentinel.webhook_notifier.requests.post')
-def test_send_with_retry_all_failures(mock_post, mock_sleep):
+def test_send_with_retry_all_failures(mock_post, mock_sleep, mock_validate):
     notifier = SentinelWebhookNotifier()
     
     import requests

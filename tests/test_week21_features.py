@@ -306,7 +306,7 @@ def test_analyst_actions_audit_logging_flow():
 
 
 def test_templates_api():
-    res = client.get("/api/sentinel/templates")
+    res = client.get("/api/v1/sentinel/templates")
     assert res.status_code == 200
     json_data = res.json()
     assert json_data["status"] == "success"
@@ -325,7 +325,7 @@ def test_template_preview_api():
             "technique_name": "Password Guessing",
         },
     }
-    res = client.post("/api/sentinel/templates/preview", json=payload)
+    res = client.post("/api/v1/sentinel/templates/preview", json=payload)
     assert res.status_code == 200
     json_data = res.json()
     assert json_data["status"] == "success"
