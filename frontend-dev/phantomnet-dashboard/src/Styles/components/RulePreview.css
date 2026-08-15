@@ -56,7 +56,8 @@ body[data-theme="light"] .rule-tab-group {
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    padding: 0.3rem 0.75rem;
+    padding: 0.45rem 0.85rem;
+    min-height: 38px;
     border-radius: 6px;
     border: none;
     cursor: pointer;
@@ -66,6 +67,8 @@ body[data-theme="light"] .rule-tab-group {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .rule-tab:hover {
@@ -103,17 +106,20 @@ body[data-theme="light"] .rule-tab.active {
     align-items: center;
     gap: 0.4rem;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 0.6rem;
+    font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    padding: 0.3rem 0.65rem;
+    padding: 0.45rem 0.75rem;
+    min-height: 38px;
     border-radius: 6px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(30, 41, 59, 0.5);
     color: #64748b;
     cursor: pointer;
     transition: all 0.2s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .rule-copy-btn:hover {
@@ -149,9 +155,10 @@ body[data-theme="light"] .rule-copy-btn:hover {
     overflow-x: auto;
     max-height: 320px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     /* Firefox scrollbar styling */
     scrollbar-width: thin;
-    scrollbar-color: rgba(139, 92, 246, 0.15) transparent;
+    scrollbar-color: rgba(139, 92, 246, 0.2) transparent;
 }
 
 .rule-code-container::-webkit-scrollbar {

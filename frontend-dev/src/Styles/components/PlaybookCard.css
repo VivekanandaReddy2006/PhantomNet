@@ -17,6 +17,12 @@
     gap: 0.875rem;
     cursor: pointer;
     outline: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.playbook-card:active {
+    transform: translateY(-2px) scale(0.99);
 }
 
 .playbook-card:focus-visible {

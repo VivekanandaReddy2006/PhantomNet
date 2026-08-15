@@ -247,16 +247,20 @@ body[data-theme="light"] .pbv-title {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(30, 41, 59, 0.5);
     color: #64748b;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .pbv-action-btn:hover {
@@ -279,8 +283,10 @@ body[data-theme="light"] .pbv-action-btn:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: rgba(30, 41, 59, 0.5);
@@ -289,6 +295,8 @@ body[data-theme="light"] .pbv-action-btn:hover {
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .pbv-close-btn:hover {
@@ -2546,6 +2554,154 @@ body[data-theme="light"] .ehp-filename {
 .ehp-spin {
     animation: pbvSpin 1s linear infinite;
 }
+
+/* ================= =========================
+   RESPONSIVE BREAKPOINTS & TABLE SCROLLBARS (1280px, 1024px, 768px, 640px, 480px)
+   ========================================== */
+
+/* Tables and code blocks scrollability inside modal */
+.pbv-markdown-body table,
+.pbv-table-wrap,
+.pbv-execution-steps-table,
+.pbv-content-scroll pre {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.3) rgba(15, 23, 42, 0.2);
+}
+
+.pbv-markdown-body table::-webkit-scrollbar,
+.pbv-table-wrap::-webkit-scrollbar,
+.pbv-content-scroll pre::-webkit-scrollbar {
+    height: 8px;
+}
+
+.pbv-markdown-body table::-webkit-scrollbar-thumb,
+.pbv-table-wrap::-webkit-scrollbar-thumb,
+.pbv-content-scroll pre::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+}
+
+@media (max-width: 1280px) {
+    .playbook-viewer-panel {
+        width: 92vw;
+        max-width: 920px;
+        max-height: 88vh;
+    }
+}
+
+@media (max-width: 1024px) {
+    .playbook-viewer-panel {
+        width: 94vw;
+        max-width: 880px;
+        max-height: 90vh;
+        border-radius: 16px;
+    }
+
+    .pbv-header {
+        padding: 0.85rem 1.25rem;
+    }
+
+    .pbv-title {
+        font-size: 0.95rem;
+    }
+
+    .pbv-action-btn,
+    .pbv-close-btn {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        min-height: 38px;
+    }
+
+    .pbv-tab {
+        font-size: 0.65rem;
+        padding: 0.45rem 0.75rem;
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .playbook-viewer-overlay {
+        padding: 0.5rem;
+    }
+
+    .playbook-viewer-panel {
+        width: 96vw;
+        max-height: 92vh;
+        border-radius: 12px;
+    }
+
+    .pbv-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .pbv-header-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.85rem;
+    }
+
+    .pbv-title {
+        font-size: 0.9rem;
+    }
+
+    .pbv-header-actions {
+        gap: 0.3rem;
+    }
+
+    .pbv-action-btn,
+    .pbv-close-btn {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        min-height: 42px;
+        font-size: 0.95rem;
+    }
+
+    .pbv-tab-bar {
+        padding: 0.4rem 1rem;
+        gap: 0.25rem;
+    }
+
+    .pbv-tab {
+        padding: 0.5rem 0.85rem;
+        min-height: 44px;
+        font-size: 0.65rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .playbook-viewer-overlay {
+        padding: 0;
+    }
+
+    .playbook-viewer-panel {
+        width: 100vw;
+        height: 100vh;
+        max-height: 100dvh;
+        border-radius: 0;
+        border: none;
+    }
+
+    .pbv-header-info {
+        max-width: calc(100vw - 160px);
+    }
+
+    .pbv-title {
+        font-size: 0.85rem;
+    }
+
+    .pbv-action-btn,
+    .pbv-close-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
 
 
 

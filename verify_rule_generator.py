@@ -13,7 +13,11 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
+BACKEND_DIR = os.path.join(PROJECT_ROOT, "backend")
+if BACKEND_DIR not in sys.path:
+    sys.path.insert(0, BACKEND_DIR)
 
+# pyrefly: ignore [missing-import]
 from sentinel.rule_generator import (
     SNORT_RULE_TEMPLATE,
     escape_snort_string,
@@ -255,7 +259,9 @@ print("="*65)
 import threading
 
 # Clean up persistent SID storage so that Task 5 tests run in isolation
+# pyrefly: ignore [missing-import]
 from sentinel.rule_generator import _SID_FILE_PATH
+# pyrefly: ignore [missing-import]
 import sentinel.rule_generator as rg
 if os.path.exists(_SID_FILE_PATH):
     try:
@@ -301,6 +307,33 @@ generate_snort_rule("any", 80, "tcp", "explicit", "T1234", sid=high)
 next_rule = generate_snort_rule("any", 80, "tcp", "next", "T1234")
 next_sid = _get_sid(next_rule)
 check(f"explicit SID {high} advances counter (next={high+1})", next_sid == high + 1)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TASK 6  Strict schema validation using idstools and pySigma
+# ═══════════════════════════════════════════════════════════════════════════
+print("\n" + "="*65)
+print("TASK 6  — Strict schema validation using idstools and pySigma")
+print("="*65)
+
+try:
+    import idstools.rule
+    rule_str = generate_snort_rule("192.168.1.1", 22, "tcp", "SSH Brute Force", "T1110.001", sid=1000001)
+    parsed_snort = idstools.rule.parse(rule_str)
+    check("Snort rule parsed successfully by idstools", parsed_snort is not None and parsed_snort.sid == 1000001)
+except ImportError:
+    check("idstools not installed", False, "Install idstools to test Snort validation")
+except Exception as e:
+    check("Snort rule validation by idstools failed", False, str(e))
+
+try:
+    from sigma.rule import SigmaRule
+    sigma_str = generate_sigma_rule("SSH Brute Force", {"category": "authentication", "product": "linux"}, {"selection": {"EventID": 4625}, "condition": "selection"}, "HIGH")
+    parsed_sigma = SigmaRule.from_yaml(sigma_str)
+    check("Sigma rule parsed successfully by pySigma", parsed_sigma is not None and parsed_sigma.title == "SSH Brute Force")
+except ImportError:
+    check("pysigma not installed", False, "Install pysigma to test Sigma validation")
+except Exception as e:
+    check("Sigma rule validation by pySigma failed", False, str(e))
 
 # ═══════════════════════════════════════════════════════════════════════════
 # DELIVERABLE — test count in test file
