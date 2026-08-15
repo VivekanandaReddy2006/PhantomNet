@@ -1889,16 +1889,21 @@ def get_campaign_timeline(
     Includes attack spike detection and anomaly timestamps.
     """
     try:
+        from sqlalchemy import func
         from database.models import PacketLog
-        logs = db.query(PacketLog).all()
+        
+        format_str = "%Y-%m-%d %H:00" if interval == "hourly" else "%Y-%m-%d 00:00"
 
+        # Push the aggregation down to the database using group_by
+        results = db.query(
+            func.strftime(format_str, PacketLog.timestamp).label("bucket"),
+            func.count(PacketLog.id).label("count")
+        ).group_by("bucket").all()
+        
         timeline_buckets = {}
-        for log in logs:
-            if getattr(log, "timestamp", None):
-                ts_str = log.timestamp.strftime("%Y-%m-%d %H:00")
-            else:
-                ts_str = "2026-08-08 10:00"
-            timeline_buckets[ts_str] = timeline_buckets.get(ts_str, 0) + 1
+        for bucket, count in results:
+            if bucket:
+                timeline_buckets[bucket] = count
 
         points = []
         if timeline_buckets:
