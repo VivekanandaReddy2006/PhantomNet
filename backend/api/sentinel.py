@@ -407,6 +407,7 @@ def compare_playbooks(
     id1: int = Query(..., ge=1, description="First playbook database ID"),
     id2: int = Query(..., ge=1, description="Second playbook database ID"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Compare two playbooks side-by-side and return structured diff metrics.
@@ -1862,9 +1863,20 @@ def export_all_rules(db: Session = Depends(get_db)):
             if pb.sigma_rule:
                 sigma_combined.append(f"# Playbook {pb.playbook_id}\n{pb.sigma_rule}")
 
-        zf.writestr("phantomnet_snort_rules.rules", "\n\n".join(snort_combined))
-        zf.writestr("phantomnet_sigma_rules.yml", "\n---\n".join(sigma_combined))
-        zf.writestr("README.txt", f"PhantomNet Sentinel Export\nGenerated: {datetime.utcnow().isoformat()}\nTotal Playbooks: {len(playbooks)}\n")
+        # Path sanitization to prevent Zip Slip vulnerabilities
+        import os
+        def sanitize_filename(filename: str) -> str:
+            # Strip any directory traversal characters and get just the base filename
+            base = os.path.basename(filename)
+            return base.replace("..", "").replace("/", "").replace("\\", "")
+
+        snort_file = sanitize_filename("phantomnet_snort_rules.rules")
+        sigma_file = sanitize_filename("phantomnet_sigma_rules.yml")
+        readme_file = sanitize_filename("README.txt")
+
+        zf.writestr(snort_file, "\n\n".join(snort_combined))
+        zf.writestr(sigma_file, "\n---\n".join(sigma_combined))
+        zf.writestr(readme_file, f"PhantomNet Sentinel Export\nGenerated: {datetime.utcnow().isoformat()}\nTotal Playbooks: {len(playbooks)}\n")
 
     mem_zip.seek(0)
     return StreamingResponse(
@@ -1974,6 +1986,7 @@ def get_audit_logs(
     user: Optional[str] = Query(None, description="Filter by username or service name"),
     playbook_id: Optional[str] = Query(None, description="Filter by associated playbook ID or DB integer ID"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """
     Retrieve audit activity logs for analyst actions and compliance tracking.

@@ -78,8 +78,39 @@ class SentinelWebhookNotifier:
             "stix_alert": stix_json
         }
 
+    def validate_webhook_url(self, url: str) -> None:
+        """Validates the webhook URL to prevent SSRF vulnerabilities."""
+        from urllib.parse import urlparse
+        import socket
+        import ipaddress
+
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            raise ValueError(f"Invalid webhook URL scheme: {parsed.scheme}")
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("Webhook URL is missing a hostname")
+
+        try:
+            # Resolve the hostname to an IP address
+            ip = socket.gethostbyname(hostname)
+            ip_obj = ipaddress.ip_address(ip)
+
+            # Block private, loopback, multicast, and other reserved/special IPs
+            if ip_obj.is_private or ip_obj.is_loopback or ip_obj.is_multicast or ip_obj.is_reserved:
+                raise ValueError(f"Webhook URL resolves to an internal or restricted IP: {ip}")
+        except socket.gaierror:
+            raise ValueError(f"Could not resolve webhook hostname: {hostname}")
+
     def _send_with_retry(self, url: str, payload: Dict[str, Any], max_retries: int = 3) -> bool:
         """Sends POST request with exponential backoff."""
+        try:
+            self.validate_webhook_url(url)
+        except ValueError as exc:
+            logger.error("SSRF Prevention: Invalid webhook URL: %s", exc)
+            return False
+
         headers = {"Content-Type": "application/json"}
         for attempt in range(1, max_retries + 1):
             try:
