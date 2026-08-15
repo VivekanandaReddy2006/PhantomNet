@@ -219,6 +219,68 @@ class SchedulerService:
         return True
 
     # ------------------------------------------------------------------
+    # Sentinel Lifecycle Retention Cleanup Scheduler
+    # ------------------------------------------------------------------
+    def start_sentinel_retention_cleanup(self) -> bool:
+        """Register the periodic sentinel playbook retention cleanup job."""
+        from config.sentinel_config import (
+            SENTINEL_RETENTION_CLEANUP_ENABLED,
+            SENTINEL_RETENTION_CLEANUP_INTERVAL_HOURS,
+        )
+
+        if not SENTINEL_RETENTION_CLEANUP_ENABLED:
+            logger.info("[Sentinel Retention] Disabled (SENTINEL_RETENTION_CLEANUP_ENABLED=false)")
+            return False
+
+        existing = self.scheduler.get_job("sentinel_retention_cleanup")
+        if existing is not None:
+            return True
+
+        trigger = IntervalTrigger(hours=max(1, SENTINEL_RETENTION_CLEANUP_INTERVAL_HOURS))
+
+        self.scheduler.add_job(
+            self._run_sentinel_retention_cleanup_cycle,
+            trigger=trigger,
+            id="sentinel_retention_cleanup",
+            name="Sentinel Retention Cleanup",
+            replace_existing=True,
+            max_instances=1,
+        )
+
+        logger.info("[Sentinel Retention] Registered — interval=%d hours", SENTINEL_RETENTION_CLEANUP_INTERVAL_HOURS)
+        return True
+
+    def stop_sentinel_retention_cleanup(self) -> bool:
+        """Remove the sentinel retention cleanup job if it exists."""
+        if self.scheduler.get_job("sentinel_retention_cleanup") is None:
+            return False
+        self.scheduler.remove_job("sentinel_retention_cleanup")
+        logger.info("[Sentinel Retention] Job removed")
+        return True
+
+    def _run_sentinel_retention_cleanup_cycle(self) -> None:
+        """Execute the retention cleanup job."""
+        from config.sentinel_config import (
+            SENTINEL_RETENTION_REJECTED_DAYS,
+            SENTINEL_RETENTION_ARCHIVED_DAYS,
+        )
+        from sentinel.retention_service import purge_expired_playbooks
+
+        logger.info("[Sentinel Retention] Cycle starting")
+        db = SessionLocal()
+        try:
+            purge_expired_playbooks(
+                db, 
+                rejected_retention_days=SENTINEL_RETENTION_REJECTED_DAYS, 
+                archived_retention_days=SENTINEL_RETENTION_ARCHIVED_DAYS
+            )
+        except Exception as exc:
+            logger.error("[Sentinel Retention] Cycle failed: %s", exc)
+        finally:
+            db.close()
+        logger.info("[Sentinel Retention] Cycle complete")
+
+    # ------------------------------------------------------------------
     # Pre-seed dedup hashes from DB (survives process restarts)
     # ------------------------------------------------------------------
     def _seed_sentinel_hashes(self) -> None:
