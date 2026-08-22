@@ -183,4 +183,69 @@ test.describe("Sentinel Cross-Browser Validation", () => {
     // Bar width must be greater than 0 (not collapsed)
     expect(barBox!.width).toBeGreaterThan(100);
   });
+
+  // Navigation Tabs: Campaign Timeline & Export History
+  test("should navigate to Campaign Timeline tab and render chart controls", async ({ page }) => {
+    const timelineBtn = page.locator(".nav-tab-btn", { hasText: "Campaign Timeline" });
+    await expect(timelineBtn).toBeVisible();
+    await timelineBtn.click();
+    await expect(page.locator(".sentinel-section-title", { hasText: "Attack Density & Anomaly Timeline" })).toBeVisible();
+  });
+
+  test("should navigate to Export History Logs tab and render audit panel", async ({ page }) => {
+    const exportsBtn = page.locator(".nav-tab-btn", { hasText: "Export History Logs" });
+    await expect(exportsBtn).toBeVisible();
+    await exportsBtn.click();
+    await expect(page.locator(".sentinel-section-title", { hasText: "Playbook Export Audit Trail & History" })).toBeVisible();
+  });
+
+  // Playbook Multi-Selection and Compare Modal Test
+  test("should select 2 playbooks and open Compare Modal with diff highlights", async ({ page }) => {
+    const checkboxes = page.locator(".playbook-card-checkbox");
+    const count = await checkboxes.count();
+    if (count < 2) {
+      test.skip();
+      return;
+    }
+
+    // Select first 2 playbooks
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+
+    // Verify compare button appears in toolbar
+    const compareBtn = page.locator(".btn-batch-compare");
+    await expect(compareBtn).toBeVisible({ timeout: 5000 });
+    await expect(compareBtn).toContainText("Compare Playbooks (2)");
+
+    // Click compare button
+    await compareBtn.click();
+
+    // Verify compare modal opens
+    const modal = page.locator(".pcm-card");
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("#compare-modal-title")).toContainText("Playbook Comparison & Diff Analysis");
+
+    // Check tab navigation in Compare Modal
+    await page.locator(".pcm-tab-btn", { hasText: "Snort Rules Diff" }).click();
+    await expect(page.locator(".pcm-code-diff-content")).toBeVisible();
+
+    await page.locator(".pcm-tab-btn", { hasText: "Sigma Rules Diff" }).click();
+    await expect(page.locator(".pcm-code-diff-content")).toBeVisible();
+
+    await page.locator(".pcm-tab-btn", { hasText: "CVE Mappings" }).click();
+    await expect(page.locator(".pcm-cve-content")).toBeVisible();
+
+    // Close modal
+    await page.locator(".pcm-close-btn").click();
+    await expect(modal).not.toBeVisible({ timeout: 5000 });
+  });
+
+  // Dark Theme validation
+  test("should verify dark HUD theme styles on wrapper", async ({ page }) => {
+    const wrapper = page.locator(".sentinel-wrapper");
+    await expect(wrapper).toBeVisible();
+    const bg = await wrapper.evaluate((el) => window.getComputedStyle(el).backgroundColor);
+    // Dark theme should be dark slate/navy rgb
+    expect(bg).not.toBe("rgb(255, 255, 255)");
+  });
 });
