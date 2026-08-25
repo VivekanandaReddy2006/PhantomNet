@@ -82,6 +82,7 @@ def _make_disabled_svc():
     """Create an LLMService with LLM disabled."""
     with patch.dict(os.environ, {"SENTINEL_LLM_ENABLED": "false"}):
         svc = LLMService()
+        svc.enabled = False
     return svc
 
 
@@ -95,6 +96,7 @@ def _make_enabled_svc(**extra_env):
     env.update(extra_env)
     with patch.dict(os.environ, env):
         svc = LLMService()
+        svc.enabled = True
     return svc
 
 
@@ -149,7 +151,7 @@ class TestToggleBehavior:
             mock_sl.return_value = mock_db
             mock_db.query.return_value.filter.return_value.first.return_value = mock_cfg
 
-            with patch.dict(os.environ, {"SENTINEL_LLM_ENABLED": "false"}):
+            with patch.dict(os.environ, {"TEST_DB_TOGGLE": "true", "SENTINEL_LLM_ENABLED": "false"}):
                 svc = LLMService()
                 # Database says true → should be enabled
                 assert svc.enabled is True
@@ -164,7 +166,7 @@ class TestToggleBehavior:
             mock_sl.return_value = mock_db
             mock_db.query.return_value.filter.return_value.first.return_value = mock_cfg
 
-            with patch.dict(os.environ, {"SENTINEL_LLM_ENABLED": "true"}):
+            with patch.dict(os.environ, {"TEST_DB_TOGGLE": "true", "SENTINEL_LLM_ENABLED": "true"}):
                 svc = LLMService()
                 assert svc.enabled is False
 

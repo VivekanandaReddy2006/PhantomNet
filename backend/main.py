@@ -121,7 +121,7 @@ async def lifespan(_app: FastAPI):
     """
     Base.metadata.create_all(bind=engine)
 
-    if ENVIRONMENT not in ["ci", "test"]:
+    if os.getenv("ENVIRONMENT", "local").lower() not in ["ci", "test"]:
         sniffer: RealTimeSniffer = RealTimeSniffer()
         sniffer.start_background_sniffer()
         print("PhantomNet Sniffer Started")

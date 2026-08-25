@@ -15,9 +15,12 @@ from api.sentinel import router as sentinel_router
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from middleware.auth import get_current_user
+from database.models import User
 
 app = FastAPI()
 app.include_router(sentinel_router)
+app.dependency_overrides[get_current_user] = lambda: User(username="testuser", role="Admin", status="active")
 
 
 @pytest.fixture(scope="module", autouse=True)

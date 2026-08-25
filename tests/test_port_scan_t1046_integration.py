@@ -50,25 +50,6 @@ for _p in (_ROOT, _BACKEND):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# ---------------------------------------------------------------------------
-# Import sentinel modules (confidence_scoring imported from sentinel pkg)
-# ---------------------------------------------------------------------------
-# Pre-patch database to prevent DB connection on import of sentinel_service
-# (database.database tries to connect at import time via SessionLocal/engine)
-# ---------------------------------------------------------------------------
-import sys as _sys
-from unittest.mock import MagicMock as _MagicMock
-
-def _patch_db_module():
-    """Inject a mock database.database module before sentinel_service imports it."""
-    _mock_db = _MagicMock()
-    _mock_db.SessionLocal = _MagicMock()
-    _mock_db.engine = _MagicMock()
-    _sys.modules.setdefault("database.database", _mock_db)
-    # Also ensure database.models is importable (it doesn't connect at import)
-
-_patch_db_module()
-
 from sentinel.mitre_mapper import map_signature, map_signatures
 from sentinel.rule_generator import generate_rules_for_campaign
 from sentinel.playbook_generator import PlaybookGenerator

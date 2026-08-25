@@ -51,11 +51,6 @@ for _p in (_ROOT, _BACKEND):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# Pre-patch database to prevent connection attempt during sentinel_service import
-from unittest.mock import MagicMock as _MagicMock
-_mock_db = _MagicMock()
-sys.modules.setdefault("database.database", _mock_db)
-
 from sentinel.rule_generator import (
     generate_sigma_rule,
     generate_rules_for_campaign,

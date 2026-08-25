@@ -14,10 +14,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("test_playbook")
 
 
+PLAYBOOKS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "playbooks"))
+
+
 @pytest.mark.anyio
 async def test_brute_force_playbook():
     print("\n--- Testing Brute Force Response Playbook ---")
-    playbook_path = "playbooks/brute_force_response.yaml"
+    playbook_path = os.path.join(PLAYBOOKS_DIR, "brute_force_response.yaml")
     playbook_data = playbook_engine.load_playbook(playbook_path)
 
     context = {"source_ip": "1.2.3.4", "failed_logins": 25}
@@ -32,7 +35,7 @@ async def test_brute_force_playbook():
 @pytest.mark.anyio
 async def test_port_scan_playbook():
     print("\n--- Testing Port Scan Response Playbook ---")
-    playbook_path = "playbooks/port_scan_response.yaml"
+    playbook_path = os.path.join(PLAYBOOKS_DIR, "port_scan_response.yaml")
     playbook_data = playbook_engine.load_playbook(playbook_path)
 
     context = {"source_ip": "5.6.7.8", "port_count": 100}
@@ -47,7 +50,7 @@ async def test_port_scan_playbook():
 @pytest.mark.anyio
 async def test_credential_reuse_playbook():
     print("\n--- Testing Credential Reuse Detection Playbook ---")
-    playbook_path = "playbooks/credential_reuse_response.yaml"
+    playbook_path = os.path.join(PLAYBOOKS_DIR, "credential_reuse_response.yaml")
     playbook_data = playbook_engine.load_playbook(playbook_path)
 
     context = {
@@ -67,7 +70,7 @@ async def test_credential_reuse_playbook():
 @pytest.mark.anyio
 async def test_distributed_attack_playbook():
     print("\n--- Testing Distributed Attack Response Playbook ---")
-    playbook_path = "playbooks/distributed_attack_response.yaml"
+    playbook_path = os.path.join(PLAYBOOKS_DIR, "distributed_attack_response.yaml")
     playbook_data = playbook_engine.load_playbook(playbook_path)
 
     context = {

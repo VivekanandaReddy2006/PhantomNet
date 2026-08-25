@@ -40,10 +40,6 @@ for _p in (_ROOT, _BACKEND):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-# Pre-patch database before any sentinel import
-from unittest.mock import MagicMock as _MagicMock
-sys.modules.setdefault("database.database", _MagicMock())
-
 from sentinel.playbook_generator import PlaybookGenerator
 
 # ---------------------------------------------------------------------------

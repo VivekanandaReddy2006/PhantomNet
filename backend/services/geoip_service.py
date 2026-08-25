@@ -93,15 +93,15 @@ class GeoIPService:
 
     def _initialize(self):
         """Load MaxMind database if available and initialize Redis."""
-        if redis:
+        if redis and os.getenv("ENVIRONMENT") not in ("test", "ci"):
             try:
                 self._redis = redis.Redis(
-                    host='localhost',
-                    port=6379,
+                    host=os.getenv("REDIS_HOST", "localhost"),
+                    port=int(os.getenv("REDIS_PORT", 6379)),
                     db=0,
                     decode_responses=True,
-                    socket_connect_timeout=1.0,
-                    socket_timeout=1.0,
+                    socket_connect_timeout=0.05,
+                    socket_timeout=0.05,
                 )
                 self._redis.ping()
                 logger.info("[GeoIP] Connected to Redis for caching.")
@@ -109,7 +109,7 @@ class GeoIPService:
                 logger.info(f"[GeoIP] Redis unavailable: {e}. Using in-memory cache.")
                 self._redis = None
         else:
-            logger.info("[GeoIP] Redis module not found. Using in-memory cache.")
+            self._redis = None
         try:
             import geoip2.database
 
