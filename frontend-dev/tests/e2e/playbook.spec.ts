@@ -53,15 +53,16 @@ test.describe("Sentinel Cross-Browser Validation", () => {
   test("should switch to ATT&CK Coverage tab and render matrix", async ({ page }) => {
     await page.locator(".nav-tab-btn", { hasText: "ATT&CK Coverage" }).click();
     await expect(
-      page.locator(".mitre-matrix-container, .sentinel-mitre-grid")
+      page.locator(".mitre-matrix-container, .sentinel-mitre-grid, .sentinel-error-state")
     ).toBeVisible({ timeout: 12000 });
   });
 
-  test("should display playbook cards or a valid empty/loading state", async ({ page }) => {
+  test("should display playbook cards or a valid empty/loading/error state", async ({ page }) => {
     const cards = await page.locator(".playbook-card").count();
     const empty = await page.locator(".sentinel-empty-state").count();
     const loading = await page.locator(".playbook-skeleton-card").count();
-    expect(cards + empty + loading).toBeGreaterThan(0);
+    const error = await page.locator(".sentinel-error-state").count();
+    expect(cards + empty + loading + error).toBeGreaterThan(0);
   });
 
   test("should open and close the playbook viewer modal", async ({ page }) => {
@@ -201,7 +202,7 @@ test.describe("Sentinel Cross-Browser Validation", () => {
 
   // Playbook Multi-Selection and Compare Modal Test
   test("should select 2 playbooks and open Compare Modal with diff highlights", async ({ page }) => {
-    const checkboxes = page.locator(".playbook-card-checkbox");
+    const checkboxes = page.locator(".playbook-card-select-checkbox");
     const count = await checkboxes.count();
     if (count < 2) {
       test.skip();

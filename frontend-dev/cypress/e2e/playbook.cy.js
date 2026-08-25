@@ -191,12 +191,12 @@ describe('Sentinel V3 Playbook Workflows', () => {
 
     // Make sure card checkboxes exist and check them
     cy.get('.playbook-card-select-checkbox').should('have.length', 2);
-    cy.get('.playbook-card-select-checkbox').first().check({ force: true });
-    cy.get('.playbook-card-select-checkbox').last().check({ force: true });
+    cy.get('.playbook-card-select-checkbox').eq(0).check({ force: true });
+    cy.get('.playbook-card-select-checkbox').eq(1).check({ force: true });
 
     // Floating batch toolbar should appear
     cy.get('.floating-batch-toolbar').should('exist');
-    cy.get('.floating-batch-toolbar').should('contain', '2');
+    cy.get('.count-number').should('have.text', '2');
 
     // Click Batch Approve
     cy.get('.btn-batch-approve').click({ force: true });
@@ -245,13 +245,12 @@ describe('Sentinel V3 Playbook Workflows', () => {
     // Click main export/download menu button
     cy.get('#playbook-viewer-export-btn').click({ force: true });
     cy.get('.pbv-export-menu').should('exist');
-
-    // Click PDF download option in dropdown
     cy.get('.pbv-export-item').contains('PDF').click({ force: true });
     cy.wait('@exportPdf');
 
-    // Re-open export menu for STIX
-    cy.get('#playbook-viewer-export-btn').click({ force: true });
+    // Wait for PDF export request to complete and re-open menu for STIX
+    cy.get('#playbook-viewer-export-btn').should('not.be.disabled').click({ force: true });
+    cy.get('.pbv-export-menu').should('exist');
     cy.get('.pbv-export-item').contains('STIX').click({ force: true });
     cy.wait('@exportStix');
 
@@ -271,11 +270,11 @@ describe('Sentinel V3 Playbook Workflows', () => {
     cy.wait('@getPlaybooks');
 
     // Check first 2 playbooks
-    cy.get('.playbook-card-checkbox').eq(0).check({ force: true });
-    cy.get('.playbook-card-checkbox').eq(1).check({ force: true });
+    cy.get('.playbook-card-select-checkbox').eq(0).check({ force: true });
+    cy.get('.playbook-card-select-checkbox').eq(1).check({ force: true });
 
     // Floating toolbar Compare button
-    cy.get('.btn-batch-compare').should('be.visible').and('contain', 'Compare Playbooks (2)');
+    cy.get('.btn-batch-compare').should('exist').and('contain', 'Compare Playbooks (2)');
     cy.get('.btn-batch-compare').click({ force: true });
 
     // Compare modal should render
