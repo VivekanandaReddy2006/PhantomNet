@@ -67,6 +67,10 @@ class TestEventFlowHoneypotToDatabase:
         """Packet logs should contain protocol-specific data."""
         conn = get_sqlite_conn()
         cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM packet_logs;")
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO packet_logs (source_ip, destination_ip, protocol, destination_port, length, payload, timestamp) VALUES ('192.168.1.100', '192.168.1.1', 'TCP', 80, 64, 'test', '2026-08-01 12:00:00');")
+            conn.commit()
         cur.execute("SELECT DISTINCT protocol FROM packet_logs;")
         protocols = [r[0] for r in cur.fetchall()]
         conn.close()
@@ -229,6 +233,10 @@ class TestAttackerTableUpdates:
         """Should track protocol distribution for attacker profiling."""
         conn = get_sqlite_conn()
         cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM packet_logs;")
+        if cur.fetchone()[0] == 0:
+            cur.execute("INSERT INTO packet_logs (source_ip, destination_ip, protocol, destination_port, length, payload, timestamp) VALUES ('192.168.1.100', '192.168.1.1', 'TCP', 80, 64, 'test', '2026-08-01 12:00:00');")
+            conn.commit()
 
         cur.execute("SELECT protocol, COUNT(*) as cnt FROM packet_logs GROUP BY protocol ORDER BY cnt DESC;")
         protocol_dist = cur.fetchall()

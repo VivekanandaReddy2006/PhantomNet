@@ -18,14 +18,15 @@ if backend_dir not in sys.path:
 
 from sentinel.models import SentinelPlaybook
 from database.database import Base, engine, SessionLocal
-from api.taxii import router as taxii_router
-
 import stix2
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from api.taxii import router as taxii_router, get_taxii_user
+from database.models import User
 
 app = FastAPI()
 app.include_router(taxii_router)
+app.dependency_overrides[get_taxii_user] = lambda: User(username="testuser", role="Admin", status="active")
 
 
 @pytest.fixture(scope="module", autouse=True)

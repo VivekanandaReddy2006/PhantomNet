@@ -98,8 +98,6 @@ def override_get_db():
 async def override_get_current_user():
     return User(id=1, username="testadmin", role="Admin", status="active")
 
-app.dependency_overrides[database.database.get_db] = override_get_db
-app.dependency_overrides[get_current_user] = override_get_current_user
 client = TestClient(app)
 
 
@@ -122,6 +120,8 @@ def cleanup_test_db():
 @pytest.fixture(scope="module", autouse=True)
 def setup_test_db_infrastructure():
     """Ensure database has all schemas created on startup."""
+    app.dependency_overrides[database.database.get_db] = override_get_db
+    app.dependency_overrides[get_current_user] = override_get_current_user
     cleanup_test_db()
     try:
         Base.metadata.drop_all(bind=database.database.engine)
@@ -130,6 +130,8 @@ def setup_test_db_infrastructure():
     Base.metadata.create_all(bind=database.database.engine)
     yield
     cleanup_test_db()
+    app.dependency_overrides.pop(database.database.get_db, None)
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 @pytest.fixture(autouse=True)

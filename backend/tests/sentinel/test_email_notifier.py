@@ -122,6 +122,7 @@ class TestSeverityThreshold:
         assert notifier.should_alert("CRITICAL") is True
 
     def test_high_does_not_meet_critical_threshold(self):
+        os.environ["SENTINEL_EMAIL_SEVERITY_THRESHOLD"] = "CRITICAL"
         notifier = _create_notifier()
         # Default threshold is CRITICAL, so HIGH should NOT trigger
         assert notifier.should_alert("HIGH") is False

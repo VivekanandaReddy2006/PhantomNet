@@ -145,11 +145,11 @@ def _run_llm_narrative_bg(playbook_id: int) -> None:
             playbook.llm_narrative = narrative
             playbook.updated_at = datetime.utcnow()
             db.commit()
-            logger.info("Successfully persisted LLM narrative for playbook %d in background.", playbook_id)
+            logger.info("Successfully persisted LLM narrative for playbook %s in background.", playbook_id)
         else:
-            logger.warning("LLMService returned empty narrative for playbook %d in background.", playbook_id)
+            logger.warning("LLMService returned empty narrative for playbook %s in background.", playbook_id)
     except Exception as exc:
-        logger.error("Failed to generate background LLM narrative for playbook %d: %s", playbook_id, exc)
+        logger.error("Failed to generate background LLM narrative for playbook %s: %s", playbook_id, exc)
     finally:
         db.close()
 

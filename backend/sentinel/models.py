@@ -389,9 +389,8 @@ class SentinelPlaybook(Base):
             "attack_type":      self.attack_type,
             "threat_score":     self.threat_score,
             "confidence_score": self.confidence_score,
-            "quality_score":    self.quality_score,
+            "quality_score":    getattr(self, "quality_score", 0),
             "severity":         self.severity,
-            "quality_score":   getattr(self, "quality_score", 0),
             # MITRE ATT&CK
             "technique_id":     self.technique_id,
             "technique_name":   self.technique_name,

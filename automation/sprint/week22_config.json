@@ -1,0 +1,386 @@
+{
+    "_comment": "PhantomNet Sprint Config \u2014 Week 22 (Month 6 Week 2: Comprehensive Testing, Days 46-50)",
+    "week": 22,
+    "milestone_title": "Month 6 \u2013 Production Polish & Final Delivery (Weeks 21\u201324)",
+    "milestone_description": "Advanced features, CVE mapping, audit logging, system hardening, comprehensive E2E testing, and final V3.0 production delivery.",
+    "month_label": "month-6",
+    "extra_labels": [
+        "comprehensive-testing",
+        "production-polish"
+    ],
+    "labels": [
+        {
+            "name": "week-22",
+            "color": "0E8A16",
+            "description": "Week 22 tasks"
+        },
+        {
+            "name": "month-6",
+            "color": "5319E7",
+            "description": "Month 6 tasks"
+        },
+        {
+            "name": "comprehensive-testing",
+            "color": "B60205",
+            "description": "Comprehensive testing and QA"
+        },
+        {
+            "name": "production-polish",
+            "color": "0075CA",
+            "description": "Production hardening and polish"
+        }
+    ],
+    "day_map": {
+        "1": "Mon (Aug 17)",
+        "2": "Tue (Aug 18)",
+        "3": "Wed (Aug 19)",
+        "4": "Thu (Aug 20)",
+        "5": "Fri (Aug 21)"
+    },
+    "tasks": [
+        {
+            "Day": 1,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Testing",
+            "Title": "Full Pytest Suite Execution and Failure Resolution",
+            "Objective": "Run the full pytest suite for the entire PhantomNet V3 Sentinel Layer and fix any test failures.",
+            "Tasks": [
+                "Execute the complete pytest suite including all backend and Sentinel modules.",
+                "Identify any failing unit or integration tests.",
+                "Fix the root causes of failures to ensure 100% test pass rate."
+            ],
+            "Deliverables": [
+                "Test execution report with all passing tests.",
+                "Bug fixes for any failed tests."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 1,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Playbook Generation Stress Test and DB Integrity",
+            "Objective": "Stress test the Sentinel backend with 100 concurrent playbook generations to verify performance and database integrity.",
+            "Tasks": [
+                "Write a load-testing script to trigger 100 concurrent generation requests.",
+                "Monitor database for locking issues or data corruption.",
+                "Validate that all 100 playbooks are accurately created and stored."
+            ],
+            "Deliverables": [
+                "Load testing script.",
+                "Stress test performance and DB integrity report."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 1,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "LLM Attack Pattern Coverage and Quality Assessment",
+            "Objective": "Test LLM narrative generation with all 12 supported attack patterns and document output quality.",
+            "Tasks": [
+                "Trigger playbook generation using the LLM integration for each of the 12 attack patterns.",
+                "Review the generated AI narratives for context accuracy, hallucinations, and formatting.",
+                "Document output quality and identify any prompt adjustments needed."
+            ],
+            "Deliverables": [
+                "LLM quality assessment document for 12 attack patterns."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 1,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "Full UI Functional E2E Test",
+            "Objective": "Perform a comprehensive manual functional test of every button, link, filter, and export feature in the UI.",
+            "Tasks": [
+                "Click and verify all navigation links.",
+                "Test all playbook actions (Approve, Reject, Export, Compare, AI toggle).",
+                "Validate search, filtering, batch operations, and pagination."
+            ],
+            "Deliverables": [
+                "UI E2E testing checklist and bug report."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Testing",
+            "Title": "Comprehensive API Security Audit",
+            "Objective": "Audit all backend API endpoints for proper authentication, input validation, and error handling.",
+            "Tasks": [
+                "Verify auth requirements on sensitive endpoints.",
+                "Check input validation and sanitization for all payload fields.",
+                "Ensure error responses do not leak sensitive backend information."
+            ],
+            "Deliverables": [
+                "API security audit report and applied fixes."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "TAXII Feed Pagination and Performance Verification",
+            "Objective": "Test the TAXII feed server with 500+ STIX objects to verify pagination logic and response performance.",
+            "Tasks": [
+                "Seed the database with 500+ STIX bundle records.",
+                "Query the TAXII feed and verify accurate pagination behavior.",
+                "Measure response times and optimize queries if necessary."
+            ],
+            "Deliverables": [
+                "TAXII pagination test report and performance metrics."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 2,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "Real Honeypot Data Sentinel Pipeline E2E",
+            "Objective": "Test the full Sentinel pipeline using live honeypot data and simulated attacks.",
+            "Tasks": [
+                "Start honeypot services and run simulated attacks (e.g., nmap, hydra).",
+                "Verify packets are logged, ML scores them, and Sentinel generates the playbook.",
+                "Validate the end-to-end flow matches expected SOC analyst scenarios."
+            ],
+            "Deliverables": [
+                "Live honeypot E2E simulation report."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 2,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "Graceful Empty State UI Verification",
+            "Objective": "Test the dashboard and all views with an empty database to verify graceful empty states.",
+            "Tasks": [
+                "Clear the database of all playbooks, rules, and campaigns.",
+                "Navigate all pages to ensure no crashes or undefined errors occur.",
+                "Verify user-friendly 'No data available' messages are displayed."
+            ],
+            "Deliverables": [
+                "Empty state UI verification report and applied fixes."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 3,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Feature",
+            "Title": "P0 and P1 Bug Resolution (Core/API)",
+            "Objective": "Fix all critical (P0) and high (P1) priority bugs identified during Day 1-2 testing in Core and API layers.",
+            "Tasks": [
+                "Triage and resolve P0/P1 issues assigned to Team Lead.",
+                "Ensure fixes do not introduce regressions.",
+                "Merge fixes to main branch."
+            ],
+            "Deliverables": [
+                "Resolved P0/P1 issues."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 3,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Feature",
+            "Title": "P0 and P1 Bug Resolution (Security/TAXII)",
+            "Objective": "Fix all critical (P0) and high (P1) priority bugs identified during Day 1-2 testing in Security and TAXII layers.",
+            "Tasks": [
+                "Triage and resolve P0/P1 issues assigned to Security Developer.",
+                "Ensure fixes do not introduce regressions.",
+                "Merge fixes to main branch."
+            ],
+            "Deliverables": [
+                "Resolved P0/P1 issues."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 3,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Feature",
+            "Title": "P0 and P1 Bug Resolution (ML/LLM)",
+            "Objective": "Fix all critical (P0) and high (P1) priority bugs identified during Day 1-2 testing in ML and LLM integration layers.",
+            "Tasks": [
+                "Triage and resolve P0/P1 issues assigned to AI/ML Developer.",
+                "Ensure fixes do not introduce regressions.",
+                "Merge fixes to main branch."
+            ],
+            "Deliverables": [
+                "Resolved P0/P1 issues."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 3,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Feature",
+            "Title": "P0 and P1 Bug Resolution (Frontend/UI)",
+            "Objective": "Fix all critical (P0) and high (P1) priority bugs identified during Day 1-2 testing in Frontend and UI components.",
+            "Tasks": [
+                "Triage and resolve P0/P1 issues assigned to Frontend Developer.",
+                "Ensure fixes do not introduce regressions.",
+                "Merge fixes to main branch."
+            ],
+            "Deliverables": [
+                "Resolved P0/P1 issues."
+            ],
+            "Estimate": 6
+        },
+        {
+            "Day": 4,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Testing",
+            "Title": "Full Post-Fix Regression Test",
+            "Objective": "Run a full regression test after all bug fixes to ensure core system functionality remains intact.",
+            "Tasks": [
+                "Run the complete test suite again.",
+                "Perform manual spot-checks on core workflows.",
+                "Confirm no new issues were introduced by bug fixes."
+            ],
+            "Deliverables": [
+                "Final regression test pass report."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 4,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Testing",
+            "Title": "Clean Docker Build and Deployment Verification",
+            "Objective": "Verify that the full application stack builds and runs cleanly from a fresh Docker compose environment.",
+            "Tasks": [
+                "Run docker-compose build --no-cache.",
+                "Run docker-compose up and ensure all containers start without errors.",
+                "Verify API and Frontend are accessible and communicating."
+            ],
+            "Deliverables": [
+                "Docker deployment verification sign-off."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 4,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Testing",
+            "Title": "LLM Graceful Degradation Verification",
+            "Objective": "Verify that the entire playbook generation system works flawlessly using templates when Ollama is offline or not installed.",
+            "Tasks": [
+                "Stop the Ollama service locally.",
+                "Trigger playbook generation and ensure it falls back to Jinja2 templates without crashing.",
+                "Verify the UI correctly reflects the 'AI Offline' state."
+            ],
+            "Deliverables": [
+                "LLM fallback verification report."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 4,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Testing",
+            "Title": "Final Visual QA and Documentation Screenshots",
+            "Objective": "Perform a final visual QA pass on the UI and capture high-quality screenshots for documentation and the README.",
+            "Tasks": [
+                "Check alignment, typography, and colors across all pages.",
+                "Capture screenshots of the Dashboard, Playbook Viewer, Mitre Matrix, and Export options.",
+                "Organize screenshots in the docs/images directory."
+            ],
+            "Deliverables": [
+                "Final visual QA sign-off.",
+                "Collection of documentation screenshots."
+            ],
+            "Estimate": 5
+        },
+        {
+            "Day": 5,
+            "Role": "Team Lead",
+            "Assignee": "sriram21-09",
+            "Type": "Review",
+            "Title": "Release Candidate 1 Final Sign-off (Team Lead)",
+            "Objective": "Final sign-off on testing, ensure all P0/P1 bugs are resolved, and tag Release Candidate 1.",
+            "Tasks": [
+                "Review overall testing and bug resolution status.",
+                "Ensure any remaining P2 bugs are documented as acceptable.",
+                "Tag the repository with v3.0.0-rc1."
+            ],
+            "Deliverables": [
+                "v3.0.0-rc1 tagged.",
+                "Release candidate readiness report."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Security Developer",
+            "Assignee": "VivekanandaReddy2006",
+            "Type": "Review",
+            "Title": "Release Candidate 1 Final Sign-off (Security)",
+            "Objective": "Final sign-off on security testing, TAXII, and IDS rule generation for Release Candidate 1.",
+            "Tasks": [
+                "Review security testing results.",
+                "Ensure all security-related P0/P1 bugs are fixed.",
+                "Provide sign-off for RC1."
+            ],
+            "Deliverables": [
+                "Security sign-off for RC1."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "AI/ML Developer",
+            "Assignee": "vikranthN101",
+            "Type": "Review",
+            "Title": "Release Candidate 1 Final Sign-off (AI/ML)",
+            "Objective": "Final sign-off on ML models, LLM integration, and timeline APIs for Release Candidate 1.",
+            "Tasks": [
+                "Review LLM and ML testing results.",
+                "Ensure all AI/ML-related P0/P1 bugs are fixed.",
+                "Provide sign-off for RC1."
+            ],
+            "Deliverables": [
+                "AI/ML sign-off for RC1."
+            ],
+            "Estimate": 4
+        },
+        {
+            "Day": 5,
+            "Role": "Frontend Developer",
+            "Assignee": "sairammanideepreddy2123",
+            "Type": "Review",
+            "Title": "Release Candidate 1 Final Sign-off (Frontend)",
+            "Objective": "Final sign-off on the React frontend, UI functionality, and themes for Release Candidate 1.",
+            "Tasks": [
+                "Review frontend E2E and visual testing results.",
+                "Ensure all UI-related P0/P1 bugs are fixed.",
+                "Provide sign-off for RC1."
+            ],
+            "Deliverables": [
+                "Frontend sign-off for RC1."
+            ],
+            "Estimate": 4
+        }
+    ]
+}
